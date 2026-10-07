@@ -60,13 +60,16 @@
 
   const seed = () => ({
     version:1,
-    settings:{mode:'practica'},
-    contractors:[
-      {id:'co-1',name:'Servicios Industriales Andinos, C.A.',rif:'J-40123456-7',contact:'María Rodríguez',phone:'0414-5550001',email:'sst@andinos.example',status:'En evaluación',notes:'Caso de práctica del curso.'},
-      {id:'co-2',name:'Mantenimiento Integral del Centro, C.A.',rif:'J-30987654-2',contact:'Luis Pérez',phone:'0412-5550110',email:'operaciones@mic.example',status:'Apta',notes:''}
-    ],
-    contracts:[{
-      id:'ct-1',contractorId:'co-1',title:'Mantenimiento mayor de tanque TK-210',site:'Complejo industrial - Área de almacenamiento',
+    settings:{mode:'trabajo'},
+    contractors:[],
+    contracts:[],
+    activeContractId:null
+  });
+
+  const exampleData = () => ({
+    contractor:{id:'co-demo',name:'Servicios Industriales Andinos, C.A.',rif:'J-40123456-7',contact:'María Rodríguez',phone:'0414-5550001',email:'sst@andinos.example',status:'En evaluación',notes:'Caso de práctica del curso Gestión SST de Contratistas.'},
+    contract:{
+      id:'ct-demo',contractorId:'co-demo',title:'Mantenimiento mayor de tanque TK-210',site:'Complejo industrial - Área de almacenamiento',
       start:'2026-10-19',end:'2026-12-02',workers:42,subcontractors:2,status:'Pendiente de habilitación',
       scope:'Mantenimiento interno y externo de tanque, reparación localizada, preparación superficial y pruebas.',
       tasks:['Espacios confinados','Trabajo en caliente','Izamiento de cargas','Control de fuentes de energía'],
@@ -77,12 +80,11 @@
         {activity:'Ingreso a espacio confinado',client:'Control de atmósfera / permiso del sitio',contractor:'Equipo de ingreso, vigía y rescate',primacy:'Requisito más restrictivo acordado',gap:'Integrar rescate con emergencia de planta',control:'Permiso + plan de rescate + prueba previa'}
       ]},
       monitoring:[
-        {id:'m-1',date:'2026-10-20',type:'Inspección',severity:'Menor',finding:'Orden y delimitación del área mejorables.',owner:'Supervisor contratista',due:'2026-10-21',status:'Cerrada'},
-        {id:'m-2',date:'2026-10-21',type:'Verificación',severity:'Mayor',finding:'Certificado del equipo de medición atmosférica próximo a vencer.',owner:'Coordinador SST contratista',due:'2026-10-22',status:'En curso'}
+        {id:'m-demo-1',date:'2026-10-20',type:'Inspección',severity:'Menor',finding:'Orden y delimitación del área mejorables.',owner:'Supervisor contratista',due:'2026-10-21',status:'Cerrada'},
+        {id:'m-demo-2',date:'2026-10-21',type:'Verificación',severity:'Mayor',finding:'Certificado del equipo de medición atmosférica próximo a vencer.',owner:'Coordinador SST contratista',due:'2026-10-22',status:'En curso'}
       ],
       performance:{management:82,operations:78,actions:70,learning:75,results:88,blockers:{criticalLegal:false,criticalControl:false,overdueCritical:false,highPotential:false},strengths:'Buena respuesta operativa y participación de supervisión.',gaps:'Mejorar seguimiento documental y velocidad de cierre de acciones.'}
-    }],
-    activeContractId:'ct-1'
+    }
   });
 
   let state = load();
@@ -203,7 +205,7 @@
     return `<div class="hero-panel"><div class="kicker">Ruta guiada de gestión</div><h2>Gestiona un contrato paso a paso</h2><p>No necesitas conocer la aplicación de memoria. Sigue la ruta del 1 al 7: la herramienta te indica qué debes hacer, qué decisión debes tomar y qué producto obtendrás.</p><div class="hero-actions">${c?`<button class="btn btn-yellow" data-go="${current.view}">Continuar: ${esc(current.name)}</button>`:'<button class="btn btn-yellow" data-go="contractors">Comenzar por la contratista</button>'}<button class="btn btn-green" data-action="excel-report">Descargar expediente en Excel</button><button class="btn btn-ghost" data-action="pdf-report">Generar informe PDF</button></div></div>
     <div class="section panel"><div class="section-head"><div><h3>Tu ruta de trabajo</h3><p>Los pasos verdes ya tienen información; el borde turquesa indica dónde continuar.</p></div><div class="workflow-progress"><strong>${completed}/7</strong><div class="progress" style="width:180px"><span style="width:${completed/7*100}%"></span></div></div></div><div class="route-grid">${route.map(x=>`<div class="route-card ${x.state}"><div class="route-no">${x.state==='done'?'✓':x.n}</div><h4>${esc(x.name)}</h4><p>${esc(x.goal)}</p><div class="route-state">${x.state==='done'?'Completado':x.state==='current'?'Continuar aquí':'Después'}</div><button data-go="${x.view}" aria-label="Ir a ${esc(x.name)}"></button></div>`).join('')}</div></div>
     ${c?`<div class="section grid grid-2"><div class="panel"><div class="section-head"><div><h3>Contrato activo</h3><p>Resumen para saber dónde estás.</p></div>${statusTag(c.status)}</div><h3 class="mt-0 text-navy">${esc(c.title)}</h3><p class="muted small">${esc(contractorById(c.contractorId)?.name||'')} · ${esc(c.site||'')}</p><div class="grid grid-3 mt-16"><div class="result-card"><div class="result-label">Criticidad</div><div class="result-value">${criticalityResult(c).short}</div><div class="small muted">${criticalityResult(c).level}</div></div><div class="result-card"><div class="result-label">Precalificación</div><div class="result-value">${pct(prequalResult(c).score)}%</div><div class="small muted">${prequalResult(c).decision}</div></div><div class="result-card"><div class="result-label">Preinicio</div><div class="result-value">${pct(prestartResult(c).compliance)}%</div><div class="small muted">${prestartResult(c).decision}</div></div></div></div><div class="panel"><div class="section-head"><div><h3>Lo que requiere atención</h3><p>Solo alertas que pueden cambiar una decisión.</p></div><span class="tag yellow">${openActions} acción(es) abierta(s)</span></div>${renderAlerts()}</div></div>`:'<div class="section didactic-note"><div class="icon">1</div><div><b>Empieza registrando a la empresa contratista.</b><p>Luego crearás el contrato y la aplicación te llevará por criticidad, precalificación, preinicio, seguimiento y cierre.</p></div></div>'}
-    <div class="section product-card"><h3>Producto final del expediente</h3><p>Cuando avances, podrás entregar o archivar un Excel con todas las hojas del proceso y un informe PDF legible para revisión, comité, compras u operaciones.</p><div class="product-actions"><button class="btn btn-green" data-action="excel-report">Descargar Excel</button><button class="btn btn-navy" data-action="pdf-report">Generar PDF</button></div></div>`;
+    <div class="section grid grid-2"><div class="product-card"><h3>Producto final del expediente</h3><p>Cuando avances, podrás entregar o archivar un Excel con todas las hojas del proceso y un informe PDF diseñado para lectura ejecutiva y revisión técnica.</p><div class="product-actions"><button class="btn btn-green" data-action="excel-report">Descargar Excel</button><button class="btn btn-navy" data-action="pdf-report">Generar PDF</button></div></div><div class="panel"><div class="section-head"><div><h3>Caso de práctica</h3><p>Úsalo solo cuando quieras explorar la aplicación sin cargar datos propios.</p></div></div><div class="didactic-note"><div class="icon">🎓</div><div><b>Ejemplo separado de tus datos reales.</b><p>Puedes cargarlo para practicar y eliminarlo después sin borrar otros contratos o contratistas.</p></div></div><div class="product-actions mt-12"><button class="btn btn-primary" data-action="load-example">Cargar caso de ejemplo</button><button class="btn btn-danger" data-action="delete-example">Eliminar caso de ejemplo</button></div></div></div>`;
   }
 
   function renderAlerts(){
