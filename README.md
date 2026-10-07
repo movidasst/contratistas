@@ -22,6 +22,7 @@ Incluye:
 - Ruta guiada paso a paso con orientación didáctica en cada etapa.
 - Exportación del expediente completo a Excel (.xlsx).
 - Generación de informe final preparado para guardar como PDF desde el navegador.
+- Caso de práctica opcional: se carga y elimina con botones independientes, sin mezclarse con los datos reales.
 
 ## Dominio
 
