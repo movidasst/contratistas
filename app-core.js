@@ -7,6 +7,15 @@
     performance:'Desempeño y cierre', references:'Referencias y criterio técnico'
   };
   const STAGES = ['Borrador','En evaluación','Adjudicado','Pendiente de habilitación','Habilitado','En ejecución','En cierre','Cerrado'];
+  const GUIDED_STEPS = [
+    {n:1,view:'contractors',name:'Contratista',goal:'Identificar a la empresa que ejecutará el trabajo.'},
+    {n:2,view:'contracts',name:'Contrato y alcance',goal:'Definir qué hará, dónde, cuándo y con qué interfaces.'},
+    {n:3,view:'criticality',name:'Criticidad',goal:'Determinar la intensidad de control que necesita el contrato.'},
+    {n:4,view:'prequal',name:'Precalificación',goal:'Verificar capacidad real y condiciones bloqueantes.'},
+    {n:5,view:'prestart',name:'Preinicio',goal:'Comprobar que todo está listo antes de autorizar el trabajo.'},
+    {n:6,view:'monitoring',name:'Seguimiento',goal:'Controlar cambios, hallazgos, acciones y eficacia de controles.'},
+    {n:7,view:'performance',name:'Cierre',goal:'Evaluar desempeño y decidir sobre futuras contrataciones.'}
+  ];
 
   const CRIT_FACTORS = [
     ['exposure','Exposición','Frecuencia y cantidad de personas expuestas al alcance contratado.'],
@@ -157,15 +166,44 @@
     return `<div class="timeline">${STAGES.map((s,i)=>`<div class="timeline-step"><div class="node ${i<idx?'done':i===idx?'current':''}">${i<idx?'✓':i+1}</div><span class="label">${esc(s)}</span></div>`).join('')}</div>`;
   }
 
+  function workflowStatus(c){
+    if(!c) return GUIDED_STEPS.map((x,i)=>({...x,state:i===0?'current':'locked'}));
+    const co=contractorById(c.contractorId);
+    const crit=Object.values(c.criticality||{}).some(v=>Number(v)>1);
+    const pq=Object.values(c.prequal?.scores||{}).some(v=>Number(v)>0);
+    const ps=PRESTART.filter(i=>c.prestart?.checks?.[i.id]).length>=Math.ceil(PRESTART.length*.7);
+    const mon=(c.monitoring||[]).length>0;
+    const perf=PERFORMANCE_DIMS.some(([k])=>Number(c.performance?.[k])>0);
+    const done=[!!co,!!(c.title&&c.scope),crit,pq,ps,mon,perf];
+    let firstPending=done.findIndex(v=>!v); if(firstPending<0) firstPending=done.length-1;
+    return GUIDED_STEPS.map((x,i)=>({...x,state:done[i]?'done':i===firstPending?'current':'locked'}));
+  }
+  function nextGuidedView(current){
+    const i=GUIDED_STEPS.findIndex(x=>x.view===current);
+    return i>=0&&i<GUIDED_STEPS.length-1?GUIDED_STEPS[i+1]:null;
+  }
+  function prevGuidedView(current){
+    const i=GUIDED_STEPS.findIndex(x=>x.view===current);
+    return i>0?GUIDED_STEPS[i-1]:null;
+  }
+  function guideStrip(viewName,what,output){
+    const step=GUIDED_STEPS.find(x=>x.view===viewName);
+    if(!step) return '';
+    return `<div class="guide-strip"><div class="guide-step"><div class="guide-num">${step.n}</div><div><h3>${esc(step.name)}</h3><p>${esc(step.goal)}</p></div></div><div class="guide-box"><b>Qué debes hacer</b><span>${esc(what)}</span></div><div class="guide-box"><b>Qué obtienes</b><span>${esc(output)}</span></div></div>`;
+  }
+  function stepNav(viewName){
+    const prev=prevGuidedView(viewName), next=nextGuidedView(viewName);
+    return `<div class="step-nav"><div>${prev?`<button class="btn btn-ghost" data-go="${prev.view}">← ${esc(prev.name)}</button>`:''}</div><div>${next?`<button class="btn btn-primary" data-go="${next.view}"><span class="next-copy"><small>Siguiente paso</small><strong>${esc(next.name)} →</strong></span></button>`:'<button class="btn btn-green" data-action="pdf-report">Generar informe PDF</button>'}</div></div>`;
+  }
+
   function renderDashboard(){
     const c=activeContract(); const openActions=state.contracts.reduce((n,x)=>n+(x.monitoring||[]).filter(a=>a.status!=='Cerrada').length,0);
-    const enabled=state.contracts.filter(x=>['Habilitado','En ejecución','En cierre','Cerrado'].includes(x.status)).length;
-    const high=state.contracts.filter(x=>criticalityResult(x).short==='N3').length;
-    return `<div class="hero-panel"><div class="kicker">Ciclo de gestión de contratistas</div><h2>Decisiones con evidencia, no solo con documentos</h2><p>Integra requisitos legales, criticidad, capacidad del contratista, puerta de preinicio, seguimiento y evaluación final. La V1 guarda la información en este navegador; la conexión multiusuario con Supabase será la siguiente capa.</p><div class="hero-actions"><button class="btn btn-yellow" data-go="criticality">Evaluar criticidad</button><button class="btn btn-green" data-go="prestart">Revisar preinicio</button><button class="btn btn-ghost" data-action="export">Exportar respaldo JSON</button></div></div>
-    <div class="section grid grid-4"><div class="metric"><div class="k">Contratistas</div><div class="v">${state.contractors.length}</div><div class="sub">Empresas registradas</div></div><div class="metric"><div class="k">Contratos</div><div class="v">${state.contracts.length}</div><div class="sub">En todo el ciclo</div></div><div class="metric"><div class="k">Habilitados / ejecución</div><div class="v">${enabled}</div><div class="sub">Con puerta superada</div></div><div class="metric alert-metric"><div class="k">Acciones abiertas</div><div class="v">${openActions}</div><div class="sub">Requieren seguimiento</div></div></div>
-    <div class="section grid grid-2"><div class="panel"><div class="section-head"><div><h3>Contrato activo</h3><p>Estado y controles principales.</p></div>${c?statusTag(c.status):''}</div>${c?`<h3 class="mt-0 text-navy">${esc(c.title)}</h3><p class="muted small">${esc(contractorById(c.contractorId)?.name||'')} · ${esc(c.site||'')}</p>${lifecycle(c)}<div class="grid grid-3 mt-16"><div class="result-card"><div class="result-label">Criticidad</div><div class="result-value">${criticalityResult(c).short}</div><div class="small muted">${criticalityResult(c).level}</div></div><div class="result-card"><div class="result-label">Precalificación</div><div class="result-value">${pct(prequalResult(c).score)}%</div><div class="small muted">${prequalResult(c).decision}</div></div><div class="result-card"><div class="result-label">Preinicio</div><div class="result-value">${pct(prestartResult(c).compliance)}%</div><div class="small muted">${prestartResult(c).decision}</div></div></div>`:'<div class="empty"><strong>No hay contrato activo</strong>Crea un contrato para iniciar el ciclo.</div>'}</div>
-    <div class="panel"><div class="section-head"><div><h3>Alertas de gestión</h3><p>Elementos que pueden cambiar la decisión.</p></div>${tag(`${high} contrato(s) N3`,'yellow')}</div>${renderAlerts()}</div></div>
-    <div class="section panel"><div class="section-head"><div><h3>Contratos recientes</h3><p>Acceso rápido al expediente SST.</p></div><button class="btn btn-primary btn-sm" data-action="new-contract">+ Nuevo contrato</button></div>${contractsTable(state.contracts.slice(0,8))}</div>`;
+    const route=workflowStatus(c), completed=route.filter(x=>x.state==='done').length;
+    const current=route.find(x=>x.state==='current')||route[route.length-1];
+    return `<div class="hero-panel"><div class="kicker">Ruta guiada de gestión</div><h2>Gestiona un contrato paso a paso</h2><p>No necesitas conocer la aplicación de memoria. Sigue la ruta del 1 al 7: la herramienta te indica qué debes hacer, qué decisión debes tomar y qué producto obtendrás.</p><div class="hero-actions">${c?`<button class="btn btn-yellow" data-go="${current.view}">Continuar: ${esc(current.name)}</button>`:'<button class="btn btn-yellow" data-go="contractors">Comenzar por la contratista</button>'}<button class="btn btn-green" data-action="excel-report">Descargar expediente en Excel</button><button class="btn btn-ghost" data-action="pdf-report">Generar informe PDF</button></div></div>
+    <div class="section panel"><div class="section-head"><div><h3>Tu ruta de trabajo</h3><p>Los pasos verdes ya tienen información; el borde turquesa indica dónde continuar.</p></div><div class="workflow-progress"><strong>${completed}/7</strong><div class="progress" style="width:180px"><span style="width:${completed/7*100}%"></span></div></div></div><div class="route-grid">${route.map(x=>`<div class="route-card ${x.state}"><div class="route-no">${x.state==='done'?'✓':x.n}</div><h4>${esc(x.name)}</h4><p>${esc(x.goal)}</p><div class="route-state">${x.state==='done'?'Completado':x.state==='current'?'Continuar aquí':'Después'}</div><button data-go="${x.view}" aria-label="Ir a ${esc(x.name)}"></button></div>`).join('')}</div></div>
+    ${c?`<div class="section grid grid-2"><div class="panel"><div class="section-head"><div><h3>Contrato activo</h3><p>Resumen para saber dónde estás.</p></div>${statusTag(c.status)}</div><h3 class="mt-0 text-navy">${esc(c.title)}</h3><p class="muted small">${esc(contractorById(c.contractorId)?.name||'')} · ${esc(c.site||'')}</p><div class="grid grid-3 mt-16"><div class="result-card"><div class="result-label">Criticidad</div><div class="result-value">${criticalityResult(c).short}</div><div class="small muted">${criticalityResult(c).level}</div></div><div class="result-card"><div class="result-label">Precalificación</div><div class="result-value">${pct(prequalResult(c).score)}%</div><div class="small muted">${prequalResult(c).decision}</div></div><div class="result-card"><div class="result-label">Preinicio</div><div class="result-value">${pct(prestartResult(c).compliance)}%</div><div class="small muted">${prestartResult(c).decision}</div></div></div></div><div class="panel"><div class="section-head"><div><h3>Lo que requiere atención</h3><p>Solo alertas que pueden cambiar una decisión.</p></div><span class="tag yellow">${openActions} acción(es) abierta(s)</span></div>${renderAlerts()}</div></div>`:'<div class="section didactic-note"><div class="icon">1</div><div><b>Empieza registrando a la empresa contratista.</b><p>Luego crearás el contrato y la aplicación te llevará por criticidad, precalificación, preinicio, seguimiento y cierre.</p></div></div>'}
+    <div class="section product-card"><h3>Producto final del expediente</h3><p>Cuando avances, podrás entregar o archivar un Excel con todas las hojas del proceso y un informe PDF legible para revisión, comité, compras u operaciones.</p><div class="product-actions"><button class="btn btn-green" data-action="excel-report">Descargar Excel</button><button class="btn btn-navy" data-action="pdf-report">Generar PDF</button></div></div>`;
   }
 
   function renderAlerts(){
