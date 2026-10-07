@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#00205b" />
+  <link rel="icon" type="image/png" href="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10" />
+  <title>Gestión SST de Contratistas | La Movida de SST</title>
+  <meta name="description" content="Aplicación para gestionar contratistas en SST: criticidad, precalificación, habilitación, preinicio, seguimiento, desempeño y cierre." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img class="brand-logo" src="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10" alt="La Movida de SST" />
+        <div class="brand-copy">
+          <strong>La Movida de SST</strong>
+          <span>Gestión de contratistas</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Navegación principal">
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">◫</span><span>Dashboard</span></button>
+        <button class="nav-item" data-view="contractors"><span class="nav-icon">◎</span><span>Contratistas</span></button>
+        <button class="nav-item" data-view="contracts"><span class="nav-icon">▤</span><span>Contratos</span></button>
+        <div class="nav-label">Ciclo SST</div>
+        <button class="nav-item" data-view="criticality"><span class="nav-icon">◆</span><span>Criticidad</span></button>
+        <button class="nav-item" data-view="prequal"><span class="nav-icon">✓</span><span>Precalificación</span></button>
+        <button class="nav-item" data-view="prestart"><span class="nav-icon">▶</span><span>Preinicio e interfaces</span></button>
+        <button class="nav-item" data-view="monitoring"><span class="nav-icon">⌁</span><span>Seguimiento</span></button>
+        <button class="nav-item" data-view="performance"><span class="nav-icon">▥</span><span>Desempeño y cierre</span></button>
+        <div class="nav-label">Soporte</div>
+        <button class="nav-item" data-view="references"><span class="nav-icon">§</span><span>Referencias</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="storage-badge"><span class="dot"></span> V1 · datos locales</div>
+        <small>Academia Movida SST<br>De la Reacción a la Prevención</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">☰</button>
+          <div>
+            <div class="eyebrow">ACADEMIA MOVIDA SST</div>
+            <h1 id="pageTitle">Dashboard</h1>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <label class="contract-picker">
+            <span>Contrato activo</span>
+            <select id="activeContractSelect"></select>
+          </label>
+          <button class="btn btn-ghost" id="printBtn">Imprimir / PDF</button>
+          <button class="btn btn-primary" id="quickContractBtn">+ Nuevo contrato</button>
+        </div>
+      </header>
+
+      <div class="app-alert" id="appAlert"></div>
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div><div class="eyebrow">LA MOVIDA DE SST</div><h2 id="modalTitle">Nuevo registro</h2></div>
+        <button class="icon-btn" id="modalClose" aria-label="Cerrar">×</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <input type="file" id="importFile" accept="application/json" hidden />
+  <script src="app-core.js"></script>
+  <script src="app-views.js"></script>
+  <script src="app-actions.js"></script>
+</body>
+</html>
