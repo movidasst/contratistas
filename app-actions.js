@@ -1,7 +1,7 @@
   function bindView(){
     $$('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
     $$('[data-open-contract]').forEach(b=>b.onclick=()=>{state.activeContractId=b.dataset.openContract;save();setView('contracts')});
-    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='export')b.onclick=exportState; if(a==='import')b.onclick=()=>$('#importFile').click(); if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
+    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
     $$('[data-edit-contractor]').forEach(b=>b.onclick=()=>openContractorModal(b.dataset.editContractor));
     $$('[data-edit-monitoring]').forEach(b=>b.onclick=()=>openMonitoringModal(b.dataset.editMonitoring));
     $$('.crit-range').forEach(el=>el.oninput=()=>{const c=activeContract();c.criticality=c.criticality||{};c.criticality[el.dataset.key]=Number(el.value);$('#crit-'+el.dataset.key).textContent=el.value;save();const r=criticalityResult(c);$('#critTotal').textContent=`${r.total}/25`;$('#critProgress').style.width=`${r.total/25*100}%`;});
@@ -32,18 +32,118 @@
   function openMonitoringModal(id){const c=activeContract();const x=id?(c.monitoring||[]).find(a=>a.id===id):null;openModal(x?'Editar seguimiento':'Nuevo registro de seguimiento',`<form><div class="form-grid"><div class="field"><label>Fecha</label><input class="input" type="date" name="date" required value="${esc(x?.date||new Date().toISOString().slice(0,10))}"></div><div class="field"><label>Tipo</label><select class="select" name="type">${selectHtml(['Inspección','Verificación','Reunión','Incidente','Cuasi accidente','Cambio','Auditoría'],x?.type||'Verificación')}</select></div><div class="field"><label>Severidad</label><select class="select" name="severity">${selectHtml(['Observación','Menor','Mayor','Crítica'],x?.severity||'Menor')}</select></div><div class="field"><label>Estado</label><select class="select" name="status">${selectHtml(['Abierta','En curso','Cerrada'],x?.status||'Abierta')}</select></div><div class="field full"><label>Hallazgo / decisión</label><textarea class="textarea" name="finding" required>${esc(x?.finding||'')}</textarea></div><div class="field"><label>Responsable</label><input class="input" name="owner" value="${esc(x?.owner||'')}"></div><div class="field"><label>Fecha compromiso</label><input class="input" type="date" name="due" value="${esc(x?.due||'')}"></div></div><div class="actions"><button type="button" class="btn btn-ghost" data-close-modal>Cancelar</button><button class="btn btn-primary" type="submit">Guardar</button></div></form>`,fd=>{const obj={id:x?.id||uid('m'),date:fd.get('date'),type:fd.get('type'),severity:fd.get('severity'),status:fd.get('status'),finding:fd.get('finding').trim(),owner:fd.get('owner').trim(),due:fd.get('due')};if(x)Object.assign(x,obj);else{c.monitoring=c.monitoring||[];c.monitoring.push(obj);}save();closeModal();notify('Seguimiento actualizado.','success');render();});bindModalButtons();}
   function bindModalButtons(){$$('[data-close-modal]').forEach(b=>b.onclick=closeModal);}
 
-  function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`movidasst-contratistas-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);notify('Respaldo exportado.','success');}
-  function importState(file){const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(!data.contractors||!data.contracts)throw new Error('Formato no válido');state=data;save();notify('Respaldo importado.','success');render();}catch(e){notify('No se pudo importar el archivo.','warn');}};r.readAsText(file);}
+  function reportBaseRows(c){
+    const co=contractorById(c.contractorId)||{};
+    return [
+      ['Campo','Valor'],
+      ['Contratista',co.name||''],['RIF',co.rif||''],['Contacto',co.contact||''],['Correo',co.email||''],
+      ['Contrato',c.title||''],['Ubicación',c.site||''],['Inicio',c.start||''],['Fin previsto',c.end||''],
+      ['Estado',c.status||''],['Trabajadores',c.workers||0],['Subcontratistas',c.subcontractors||0],
+      ['Alcance',c.scope||''],['Tareas críticas',(c.tasks||[]).join(', ')]
+    ];
+  }
+
+  function exportExcelReport(){
+    const c=activeContract();
+    if(!c){notify('Selecciona un contrato para generar el Excel.','warn');return;}
+    if(typeof XLSX==='undefined'){notify('No se pudo cargar el generador de Excel. Intenta recargar la página.','warn');return;}
+    const wb=XLSX.utils.book_new();
+    const add=(name,rows)=>{const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=rows[0].map((_,i)=>({wch:i===0?28:52})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));};
+
+    add('Resumen',[
+      ['GESTIÓN SST DE CONTRATISTAS - LA MOVIDA DE SST',''],
+      ...reportBaseRows(c),
+      ['Criticidad',criticalityResult(c).level],
+      ['Puntaje precalificación',Math.round(prequalResult(c).score)+'%'],
+      ['Decisión precalificación',prequalResult(c).decision],
+      ['Cumplimiento preinicio',Math.round(prestartResult(c).compliance)+'%'],
+      ['Decisión preinicio',prestartResult(c).decision],
+      ['Desempeño final',Math.round(performanceResult(c).score)+'%'],
+      ['Recomendación final',performanceResult(c).decision]
+    ]);
+
+    add('Criticidad',[
+      ['Factor','Valor 1-5','Criterio'],
+      ...CRIT_FACTORS.map(([k,n,d])=>[n,Number(c.criticality?.[k])||1,d]),
+      ['TOTAL',criticalityResult(c).total,criticalityResult(c).level]
+    ]);
+
+    add('Precalificación',[
+      ['Criterio','Peso %','Puntaje 0-4','Crítico'],
+      ...PREQUAL.map(i=>[i.name,i.weight,Number(c.prequal?.scores?.[i.id])||0,i.critical?'Sí':'No']),
+      ['RESULTADO','',Math.round(prequalResult(c).score)+'%',prequalResult(c).decision],
+      ['Condición bloqueante: competencia crítica','',c.prequal?.blockers?.criticalCompetence?'Sí':'No',''],
+      ['Condición bloqueante: incumplimiento legal','',c.prequal?.blockers?.legalGap?'Sí':'No',''],
+      ['Condición bloqueante: control crítico','',c.prequal?.blockers?.criticalControl?'Sí':'No',''],
+      ['Criterio / notas','',c.prequal?.notes||'','']
+    ]);
+
+    add('Preinicio',[
+      ['Requisito','Crítico','Estado'],
+      ...PRESTART.map(i=>[i.title,i.critical?'Sí':'No',({yes:'Sí',pending:'Pendiente',no:'No'})[c.prestart?.checks?.[i.id]]||'Sin revisar']),
+      ['RESULTADO','',prestartResult(c).decision]
+    ]);
+
+    add('Interfaces',[
+      ['Actividad / interfaz','Beneficiaria','Contratista','Criterio que prevalece','Brecha','Control / evidencia'],
+      ...(c.prestart?.interfaces||[]).map(x=>[x.activity||'',x.client||'',x.contractor||'',x.primacy||'',x.gap||'',x.control||''])
+    ]);
+
+    add('Seguimiento',[
+      ['Fecha','Tipo','Severidad','Hallazgo / decisión','Responsable','Fecha compromiso','Estado'],
+      ...(c.monitoring||[]).map(x=>[x.date||'',x.type||'',x.severity||'',x.finding||'',x.owner||'',x.due||'',x.status||''])
+    ]);
+
+    add('Desempeño',[
+      ['Dimensión','Peso %','Resultado %'],
+      ...PERFORMANCE_DIMS.map(([k,n,w])=>[n,w,Number(c.performance?.[k])||0]),
+      ['RESULTADO FINAL','',Math.round(performanceResult(c).score)+'%'],
+      ['RECOMENDACIÓN','',performanceResult(c).decision],
+      ['Fortalezas','',c.performance?.strengths||''],
+      ['Brechas / condiciones futuras','',c.performance?.gaps||'']
+    ]);
+
+    XLSX.writeFile(wb,`Gestion_SST_Contratistas_${(c.title||'contrato').replace(/[^a-z0-9áéíóúñ]+/gi,'_').slice(0,50)}.xlsx`);
+    notify('Excel del expediente generado.','success');
+  }
+
+  function generatePdfReport(){
+    const c=activeContract();
+    if(!c){notify('Selecciona un contrato para generar el PDF.','warn');return;}
+    const co=contractorById(c.contractorId)||{}, cr=criticalityResult(c), pq=prequalResult(c), ps=prestartResult(c), pf=performanceResult(c);
+    const interfaces=(c.prestart?.interfaces||[]).map(x=>`<tr><td>${esc(x.activity||'')}</td><td>${esc(x.client||'')}</td><td>${esc(x.contractor||'')}</td><td>${esc(x.primacy||'')}</td><td>${esc(x.gap||'')}</td><td>${esc(x.control||'')}</td></tr>`).join('');
+    const mon=(c.monitoring||[]).map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(x.type||'')}</td><td>${esc(x.severity||'')}</td><td>${esc(x.finding||'')}</td><td>${esc(x.owner||'')}</td><td>${fmtDate(x.due)}</td><td>${esc(x.status||'')}</td></tr>`).join('');
+    const pre=PREQUAL.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.weight}%</td><td>${Number(c.prequal?.scores?.[i.id])||0}/4</td><td>${i.critical?'Sí':'No'}</td></tr>`).join('');
+    const pst=PRESTART.map(i=>`<tr><td>${esc(i.title)}</td><td>${i.critical?'Sí':'No'}</td><td>${({yes:'Sí',pending:'Pendiente',no:'No'})[c.prestart?.checks?.[i.id]]||'Sin revisar'}</td></tr>`).join('');
+    const dims=PERFORMANCE_DIMS.map(([k,n,w])=>`<tr><td>${esc(n)}</td><td>${w}%</td><td>${Number(c.performance?.[k])||0}%</td></tr>`).join('');
+
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>Informe SST contratista</title><style>
+      @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#334155;font-size:11px;margin:0}h1,h2,h3{color:#00205b}h1{font-size:24px;margin:0}h2{font-size:16px;margin:22px 0 8px;border-bottom:2px solid #007b85;padding-bottom:5px}h3{font-size:12px}.head{display:flex;gap:14px;align-items:center;border-bottom:5px solid #007b85;padding-bottom:12px}.logo{width:74px;height:74px;object-fit:contain}.sub{color:#64748b;margin-top:5px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}.box{border:1px solid #dbe4ea;border-radius:8px;padding:8px}.box b{color:#00205b}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:12px 0}.kpi{border:1px solid #dbe4ea;border-radius:9px;padding:9px;text-align:center}.kpi strong{display:block;font-size:19px;color:#007b85}.decision{background:#eef8e9;border-left:5px solid #70ad47;padding:10px;border-radius:7px;font-weight:bold;color:#00205b}table{width:100%;border-collapse:collapse;margin-top:6px}th{background:#00205b;color:#fff;text-align:left;padding:6px;font-size:9px}td{border-bottom:1px solid #e5eaef;padding:6px;vertical-align:top}.note{background:#fff8e1;border-left:4px solid #ffb600;padding:8px;border-radius:6px;margin-top:8px}.foot{margin-top:24px;border-top:1px solid #dbe4ea;padding-top:8px;color:#64748b;font-size:9px;text-align:center}.page{break-inside:avoid}.break{break-before:page}
+    </style></head><body>
+    <div class="head"><img class="logo" src="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10"><div><div style="color:#007b85;font-weight:bold">LA MOVIDA DE SST · ACADEMIA MOVIDA SST</div><h1>Informe de Gestión SST de Contratistas</h1><div class="sub">De la Reacción a la Prevención · www.movidasst.com</div></div></div>
+    <div class="meta"><div class="box"><b>Contratista</b><br>${esc(co.name||'—')}<br>${esc(co.rif||'')}</div><div class="box"><b>Contrato</b><br>${esc(c.title||'—')}<br>${esc(c.site||'')}</div><div class="box"><b>Periodo</b><br>${fmtDate(c.start)} a ${fmtDate(c.end)}</div><div class="box"><b>Estado</b><br>${esc(c.status||'')}</div></div>
+    <h2>Resumen ejecutivo</h2><div class="kpis"><div class="kpi"><span>Criticidad</span><strong>${cr.short}</strong><small>${esc(cr.level)}</small></div><div class="kpi"><span>Precalificación</span><strong>${Math.round(pq.score)}%</strong><small>${esc(pq.decision)}</small></div><div class="kpi"><span>Preinicio</span><strong>${Math.round(ps.compliance)}%</strong><small>${esc(ps.decision)}</small></div><div class="kpi"><span>Desempeño</span><strong>${Math.round(pf.score)}%</strong><small>Cierre</small></div></div><div class="decision">${esc(pf.decision)}</div>
+    <h2>Alcance y contexto</h2><div class="box"><b>Alcance</b><br>${esc(c.scope||'—')}<br><br><b>Tareas críticas</b><br>${esc((c.tasks||[]).join(', ')||'No registradas')}</div>
+    <h2>Clasificación de criticidad</h2><table><thead><tr><th>Factor</th><th>Valor</th><th>Criterio</th></tr></thead><tbody>${CRIT_FACTORS.map(([k,n,d])=>`<tr><td>${esc(n)}</td><td>${Number(c.criticality?.[k])||1}/5</td><td>${esc(d)}</td></tr>`).join('')}</tbody></table>
+    <div class="break"></div><h2>Precalificación y habilitación</h2><table><thead><tr><th>Criterio</th><th>Peso</th><th>Puntaje</th><th>Crítico</th></tr></thead><tbody>${pre}</tbody></table><div class="note"><b>Criterio técnico:</b> ${esc(c.prequal?.notes||'Sin observaciones registradas.')}</div>
+    <h2>Puerta de preinicio</h2><table><thead><tr><th>Requisito</th><th>Crítico</th><th>Estado</th></tr></thead><tbody>${pst}</tbody></table>
+    <h2>Interfaces</h2><table><thead><tr><th>Actividad</th><th>Beneficiaria</th><th>Contratista</th><th>Primacía</th><th>Brecha</th><th>Control</th></tr></thead><tbody>${interfaces||'<tr><td colspan="6">Sin interfaces registradas.</td></tr>'}</tbody></table>
+    <div class="break"></div><h2>Seguimiento de ejecución</h2><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Severidad</th><th>Hallazgo / decisión</th><th>Responsable</th><th>Compromiso</th><th>Estado</th></tr></thead><tbody>${mon||'<tr><td colspan="7">Sin registros de seguimiento.</td></tr>'}</tbody></table>
+    <h2>Evaluación de desempeño y cierre</h2><table><thead><tr><th>Dimensión</th><th>Peso</th><th>Resultado</th></tr></thead><tbody>${dims}</tbody></table><div class="box" style="margin-top:10px"><b>Fortalezas</b><br>${esc(c.performance?.strengths||'—')}<br><br><b>Brechas / condiciones para futura contratación</b><br>${esc(c.performance?.gaps||'—')}</div>
+    <div class="foot">Elaborado por David Linares Brea · Academia Movida SST · De la Reacción a la Prevención · www.movidasst.com</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`;
+    const w=window.open('','_blank'); if(!w){notify('El navegador bloqueó la ventana del informe. Habilita ventanas emergentes e intenta nuevamente.','warn');return;} w.document.open();w.document.write(html);w.document.close();
+  }
 
   // Global events
   $$('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view));
   picker.onchange=()=>{state.activeContractId=picker.value;save();render();};
   $('#quickContractBtn').onclick=openContractModal;
-  $('#printBtn').onclick=()=>window.print();
+  $('#printBtn').onclick=generatePdfReport;
+  $('#excelBtn').onclick=exportExcelReport;
   $('#menuToggle').onclick=()=>$('#sidebar').classList.toggle('open');
   $('#modalClose').onclick=closeModal;
   $('#modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')closeModal();};
-  $('#importFile').onchange=e=>{if(e.target.files?.[0])importState(e.target.files[0]);e.target.value='';};
   window.addEventListener('hashchange',()=>{currentView=location.hash.replace('#/','')||'dashboard';render();});
   window.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
