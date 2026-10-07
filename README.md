@@ -19,8 +19,9 @@ Incluye:
 - Seguimiento de ejecución y acciones.
 - Scorecard de desempeño y cierre.
 - Referencias diferenciadas: legislación venezolana, PDVSA e internacionales.
-- Exportación e importación de respaldo JSON.
-- Impresión / guardado a PDF desde el navegador.
+- Ruta guiada paso a paso con orientación didáctica en cada etapa.
+- Exportación del expediente completo a Excel (.xlsx).
+- Generación de informe final preparado para guardar como PDF desde el navegador.
 
 ## Dominio
 
@@ -38,7 +39,7 @@ Incluye:
 
 ## Persistencia
 
-La V1 guarda la información en el navegador. La siguiente fase prevista es conectar **Supabase** para autenticación, almacenamiento multiusuario, roles, evidencias y reportes compartidos.
+La V1 guarda automáticamente la información en el navegador para simplificar la experiencia del participante. El producto entregable es el **expediente Excel** y el **informe PDF**. La siguiente fase prevista es conectar **Supabase** para autenticación, almacenamiento multiusuario, roles, evidencias y reportes compartidos.
 
 ## Identidad
 
