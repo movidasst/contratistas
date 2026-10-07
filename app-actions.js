@@ -1,7 +1,7 @@
   function bindView(){
     $$('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
     $$('[data-open-contract]').forEach(b=>b.onclick=()=>{state.activeContractId=b.dataset.openContract;save();setView('contracts')});
-    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
+    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='load-example')b.onclick=loadExampleCase; if(a==='delete-example')b.onclick=deleteExampleCase; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
     $$('[data-edit-contractor]').forEach(b=>b.onclick=()=>openContractorModal(b.dataset.editContractor));
     $$('[data-edit-monitoring]').forEach(b=>b.onclick=()=>openMonitoringModal(b.dataset.editMonitoring));
     $$('.crit-range').forEach(el=>el.oninput=()=>{const c=activeContract();c.criticality=c.criticality||{};c.criticality[el.dataset.key]=Number(el.value);$('#crit-'+el.dataset.key).textContent=el.value;save();const r=criticalityResult(c);$('#critTotal').textContent=`${r.total}/25`;$('#critProgress').style.width=`${r.total/25*100}%`;});
@@ -12,6 +12,38 @@
     $$('.perf-range').forEach(el=>el.oninput=()=>{const c=activeContract();c.performance[el.dataset.key]=Number(el.value);save();$('#dim-'+el.dataset.key).textContent=`${el.value}%`;updatePerfResult();});
     $$('.perf-blocker').forEach(el=>el.onchange=()=>{const c=activeContract();c.performance.blockers=c.performance.blockers||{};c.performance.blockers[el.dataset.key]=el.checked;save();updatePerfResult();});
     const search=$('#contractorSearch'); if(search)search.oninput=()=>{const q=search.value.toLowerCase().trim();const rows=state.contractors.filter(x=>(x.name+' '+x.rif+' '+x.contact).toLowerCase().includes(q));$('#contractorsTable').innerHTML=contractorsTable(rows);bindView();};
+  }
+
+  function cloneData(x){ return JSON.parse(JSON.stringify(x)); }
+  function loadExampleCase(){
+    const demo=exampleData();
+    // El ejemplo se carga como expediente independiente sin borrar datos reales.
+    state.contracts=state.contracts.filter(x=>x.id!=='ct-demo' && !(x.id==='ct-1'&&x.title==='Mantenimiento mayor de tanque TK-210'));
+    const legacyIds=new Set(['co-demo','co-1']);
+    state.contractors=state.contractors.filter(x=>!legacyIds.has(x.id));
+    // El segundo contratista de la primera versión era también dato precargado sin uso.
+    state.contractors=state.contractors.filter(x=>!(x.id==='co-2'&&x.name==='Mantenimiento Integral del Centro, C.A.'&&!state.contracts.some(c=>c.contractorId===x.id)));
+    state.contractors.push(cloneData(demo.contractor));
+    state.contracts.push(cloneData(demo.contract));
+    state.activeContractId=demo.contract.id;
+    save();
+    notify('Caso de práctica cargado. Puedes recorrer los 7 pasos y eliminarlo cuando termines.','success');
+    render();
+  }
+  function deleteExampleCase(){
+    const demoContractIds=new Set(['ct-demo']);
+    state.contracts=state.contracts.filter(x=>!(demoContractIds.has(x.id)||(x.id==='ct-1'&&x.title==='Mantenimiento mayor de tanque TK-210')));
+    const used=new Set(state.contracts.map(x=>x.contractorId));
+    state.contractors=state.contractors.filter(x=>{
+      if(x.id==='co-demo') return false;
+      if(x.id==='co-1'&&x.name==='Servicios Industriales Andinos, C.A.') return false;
+      if(x.id==='co-2'&&x.name==='Mantenimiento Integral del Centro, C.A.'&&!used.has(x.id)) return false;
+      return true;
+    });
+    if(!state.contracts.some(x=>x.id===state.activeContractId)) state.activeContractId=state.contracts[0]?.id||null;
+    save();
+    notify('Caso de práctica eliminado. Tus demás registros se conservaron.','success');
+    render();
   }
 
   function updatePqResult(){const r=prequalResult(activeContract());$('#pqScore').textContent=`${pct(r.score)}%`;$('#pqProgress').style.width=`${r.score}%`;$('#pqDecision').textContent=r.decision;}
@@ -111,27 +143,97 @@
     const c=activeContract();
     if(!c){notify('Selecciona un contrato para generar el PDF.','warn');return;}
     const co=contractorById(c.contractorId)||{}, cr=criticalityResult(c), pq=prequalResult(c), ps=prestartResult(c), pf=performanceResult(c);
-    const interfaces=(c.prestart?.interfaces||[]).map(x=>`<tr><td>${esc(x.activity||'')}</td><td>${esc(x.client||'')}</td><td>${esc(x.contractor||'')}</td><td>${esc(x.primacy||'')}</td><td>${esc(x.gap||'')}</td><td>${esc(x.control||'')}</td></tr>`).join('');
-    const mon=(c.monitoring||[]).map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(x.type||'')}</td><td>${esc(x.severity||'')}</td><td>${esc(x.finding||'')}</td><td>${esc(x.owner||'')}</td><td>${fmtDate(x.due)}</td><td>${esc(x.status||'')}</td></tr>`).join('');
-    const pre=PREQUAL.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.weight}%</td><td>${Number(c.prequal?.scores?.[i.id])||0}/4</td><td>${i.critical?'Sí':'No'}</td></tr>`).join('');
-    const pst=PRESTART.map(i=>`<tr><td>${esc(i.title)}</td><td>${i.critical?'Sí':'No'}</td><td>${({yes:'Sí',pending:'Pendiente',no:'No'})[c.prestart?.checks?.[i.id]]||'Sin revisar'}</td></tr>`).join('');
-    const dims=PERFORMANCE_DIMS.map(([k,n,w])=>`<tr><td>${esc(n)}</td><td>${w}%</td><td>${Number(c.performance?.[k])||0}%</td></tr>`).join('');
+    const pendingCritical=PRESTART.filter(i=>i.critical&&c.prestart?.checks?.[i.id]!=='yes').length;
+    const openActions=(c.monitoring||[]).filter(x=>x.status!=='Cerrada').length;
+    const blockers=Object.values(c.prequal?.blockers||{}).filter(Boolean).length+Object.values(c.performance?.blockers||{}).filter(Boolean).length;
+    const generated=new Date().toLocaleDateString('es-VE',{day:'2-digit',month:'long',year:'numeric'});
+
+    const stateBadge=(v)=>v==='yes'?'<span class="badge ok">Sí</span>':v==='no'?'<span class="badge no">No</span>':v==='pending'?'<span class="badge wait">Pendiente</span>':'<span class="badge na">Sin revisar</span>';
+    const preRows=PREQUAL.map(i=>`<tr><td><b>${esc(i.name)}</b><span>${esc(i.desc)}</span></td><td class="ctr">${i.weight}%</td><td class="ctr score">${Number(c.prequal?.scores?.[i.id])||0}/4</td><td class="ctr">${i.critical?'<span class="badge wait">Crítico</span>':'—'}</td></tr>`).join('');
+    const psCards=PRESTART.map(i=>`<div class="check"><div><b>${esc(i.title)}</b><p>${esc(i.desc)}</p></div><div class="check-side">${i.critical?'<small>CRÍTICO</small>':''}${stateBadge(c.prestart?.checks?.[i.id])}</div></div>`).join('');
+    const interfaceCards=(c.prestart?.interfaces||[]).map((x,i)=>`<div class="interface"><div class="interface-title"><span>${i+1}</span><b>${esc(x.activity||'Interfaz')}</b></div><div class="interface-grid"><div><small>Beneficiaria</small><p>${esc(x.client||'—')}</p></div><div><small>Contratista</small><p>${esc(x.contractor||'—')}</p></div><div><small>Criterio que prevalece</small><p>${esc(x.primacy||'—')}</p></div><div><small>Brecha</small><p>${esc(x.gap||'—')}</p></div><div class="wide"><small>Control / evidencia acordada</small><p>${esc(x.control||'—')}</p></div></div></div>`).join('');
+    const monitoringCards=(c.monitoring||[]).map(x=>`<div class="event"><div class="event-top"><b>${esc(x.type||'Registro')}</b><span class="badge ${x.status==='Cerrada'?'ok':x.severity==='Crítica'||x.severity==='Mayor'?'no':'wait'}">${esc(x.status||'')}</span></div><div class="event-meta">${fmtDate(x.date)} · ${esc(x.severity||'')} · Responsable: ${esc(x.owner||'—')} · Compromiso: ${fmtDate(x.due)}</div><p>${esc(x.finding||'—')}</p></div>`).join('');
+    const dimCards=PERFORMANCE_DIMS.map(([k,n,w])=>`<div class="dim"><small>${esc(n)}</small><strong>${Number(c.performance?.[k])||0}%</strong><span>Peso ${w}%</span></div>`).join('');
+    const riskRows=CRIT_FACTORS.map(([k,n,d])=>`<tr><td><b>${esc(n)}</b></td><td class="ctr score">${Number(c.criticality?.[k])||1}/5</td><td>${esc(d)}</td></tr>`).join('');
+
+    const header=(compact=false)=>`<div class="report-head ${compact?'compact':''}"><img src="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10"><div><div class="brandline">LA MOVIDA DE SST · ACADEMIA MOVIDA SST</div><h1>${compact?'Gestión SST de Contratistas':'Informe de Gestión SST de Contratistas'}</h1><div class="tagline">De la Reacción a la Prevención · www.movidasst.com</div></div></div>`;
+    const footer=(page)=>`<div class="report-foot"><span>Elaborado por David Linares Brea</span><span>Página ${page} · ${generated}</span></div>`;
 
     const html=`<!doctype html><html><head><meta charset="utf-8"><title>Informe SST contratista</title><style>
-      @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#334155;font-size:11px;margin:0}h1,h2,h3{color:#00205b}h1{font-size:24px;margin:0}h2{font-size:16px;margin:22px 0 8px;border-bottom:2px solid #007b85;padding-bottom:5px}h3{font-size:12px}.head{display:flex;gap:14px;align-items:center;border-bottom:5px solid #007b85;padding-bottom:12px}.logo{width:74px;height:74px;object-fit:contain}.sub{color:#64748b;margin-top:5px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}.box{border:1px solid #dbe4ea;border-radius:8px;padding:8px}.box b{color:#00205b}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:12px 0}.kpi{border:1px solid #dbe4ea;border-radius:9px;padding:9px;text-align:center}.kpi strong{display:block;font-size:19px;color:#007b85}.decision{background:#eef8e9;border-left:5px solid #70ad47;padding:10px;border-radius:7px;font-weight:bold;color:#00205b}table{width:100%;border-collapse:collapse;margin-top:6px}th{background:#00205b;color:#fff;text-align:left;padding:6px;font-size:9px}td{border-bottom:1px solid #e5eaef;padding:6px;vertical-align:top}.note{background:#fff8e1;border-left:4px solid #ffb600;padding:8px;border-radius:6px;margin-top:8px}.foot{margin-top:24px;border-top:1px solid #dbe4ea;padding-top:8px;color:#64748b;font-size:9px;text-align:center}.page{break-inside:avoid}.break{break-before:page}
+      @page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#334155;background:#eef2f6;font-size:10.5px;line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .sheet{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:11mm 12mm 10mm;display:flex;flex-direction:column;page-break-after:always}.sheet:last-child{page-break-after:auto}
+      .body{flex:1}.report-head{display:flex;align-items:center;gap:12px;padding-bottom:9px;border-bottom:4px solid #007b85}.report-head img{width:62px;height:62px;object-fit:contain}.report-head.compact img{width:44px;height:44px}.brandline{color:#007b85;font-size:9px;font-weight:800;letter-spacing:.35px}.report-head h1{margin:1px 0 2px;color:#00205b;font-size:23px;line-height:1.05}.report-head.compact h1{font-size:18px}.tagline{color:#64748b;font-size:9.5px}
+      .report-foot{margin-top:auto;padding-top:7px;border-top:1px solid #dbe4ea;display:flex;justify-content:space-between;color:#64748b;font-size:8.5px}
+      h2{margin:14px 0 7px;color:#00205b;font-size:15px;line-height:1.1;display:flex;align-items:center;gap:8px}h2:after{content:"";height:2px;background:#d8ecee;flex:1}h3{margin:0;color:#00205b}
+      .meta{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:7px;margin-top:10px}.meta .card{border:1px solid #dbe4ea;border-radius:9px;padding:8px;background:#fbfdfe}.meta .wide{grid-column:span 2}.label{display:block;color:#007b85;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;margin-bottom:2px}.value{font-weight:700;color:#00205b;font-size:10.5px}
+      .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.kpi{border:1px solid #dbe4ea;border-radius:11px;padding:9px;text-align:center;background:#fff}.kpi small{display:block;color:#64748b;font-size:8.5px}.kpi strong{display:block;color:#007b85;font-size:21px;line-height:1;margin:3px 0}.kpi span{font-size:8px;color:#334155}
+      .decision{margin-top:8px;border-radius:9px;padding:10px 12px;background:#eef8e9;border-left:6px solid #70ad47;color:#00205b;font-weight:800;font-size:11.5px;display:flex;justify-content:space-between;align-items:center;gap:12px}.decision small{font-weight:600;color:#4d5c6a}
+      .scope{border:1px solid #dbe4ea;border-radius:10px;padding:9px 11px;background:#fbfdfe}.scope p{margin:2px 0 7px}.chips{display:flex;gap:5px;flex-wrap:wrap}.chip{padding:4px 7px;border-radius:999px;background:#eaf6f7;color:#006a72;font-size:8.5px;font-weight:800}
+      table{width:100%;border-collapse:collapse;table-layout:fixed}th{background:#00205b;color:#fff;text-align:left;padding:6px 7px;font-size:8.5px}td{border-bottom:1px solid #e5eaef;padding:6px 7px;vertical-align:top}td span{display:block;color:#64748b;font-size:8.3px;margin-top:2px}.ctr{text-align:center}.score{font-weight:800;color:#00205b}
+      .drivers{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}.driver{border-radius:9px;padding:9px;border:1px solid #dbe4ea;background:#fff}.driver small{display:block;color:#64748b;font-size:8px}.driver strong{display:block;font-size:18px;color:#00205b;margin:2px 0}.driver.warn{border-left:5px solid #ffb600}.driver.red{border-left:5px solid #c62828}.driver.green{border-left:5px solid #70ad47}
+      .note{margin-top:8px;background:#fff8e1;border-left:5px solid #ffb600;border-radius:8px;padding:8px 10px}.note b{color:#00205b}
+      .checks{display:grid;grid-template-columns:1fr 1fr;gap:6px}.check{border:1px solid #dbe4ea;border-radius:8px;padding:7px 8px;display:grid;grid-template-columns:1fr auto;gap:7px;align-items:start;break-inside:avoid}.check b{color:#00205b;font-size:9.2px}.check p{margin:2px 0 0;color:#64748b;font-size:8px;line-height:1.25}.check-side{text-align:right}.check-side small{display:block;color:#8a6200;font-weight:800;font-size:7px;margin-bottom:3px}
+      .badge{display:inline-block;border-radius:999px;padding:3px 6px;font-size:7.8px;font-weight:800;white-space:nowrap}.badge.ok{background:#eaf6ef;color:#356824}.badge.wait{background:#fff3c8;color:#795b00}.badge.no{background:#fde9e7;color:#9d241e}.badge.na{background:#eef2f5;color:#64748b}
+      .interface{border:1px solid #dbe4ea;border-radius:10px;padding:8px;margin-bottom:7px;break-inside:avoid}.interface-title{display:flex;align-items:center;gap:7px;margin-bottom:6px}.interface-title span{width:22px;height:22px;border-radius:7px;background:#007b85;color:#fff;display:grid;place-items:center;font-weight:800}.interface-title b{color:#00205b;font-size:10.5px}.interface-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 9px}.interface-grid .wide{grid-column:1/-1}.interface-grid small{display:block;color:#007b85;font-weight:800;font-size:7.7px;text-transform:uppercase}.interface-grid p{margin:1px 0 0;font-size:8.8px}
+      .events{display:grid;grid-template-columns:1fr 1fr;gap:7px}.event{border:1px solid #dbe4ea;border-radius:9px;padding:8px;break-inside:avoid}.event-top{display:flex;justify-content:space-between;gap:8px}.event-top b{color:#00205b}.event-meta{font-size:7.8px;color:#64748b;margin:3px 0 5px}.event p{margin:0;font-size:9px}
+      .dims{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.dim{border:1px solid #dbe4ea;border-radius:9px;padding:8px;text-align:center}.dim small{display:block;min-height:24px;color:#64748b;font-size:7.7px}.dim strong{display:block;color:#007b85;font-size:18px}.dim span{font-size:7.5px;color:#64748b}
+      .learning{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.learning>div{border-radius:9px;padding:9px;border:1px solid #dbe4ea}.learning b{color:#00205b}.learning p{margin:3px 0 0}
+      .signatures{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:15px}.sig{padding-top:18px;border-top:1px solid #64748b;text-align:center;font-size:8.5px;color:#64748b}
+      @media print{body{background:#fff}.sheet{margin:0}.no-print{display:none!important}}
     </style></head><body>
-    <div class="head"><img class="logo" src="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10"><div><div style="color:#007b85;font-weight:bold">LA MOVIDA DE SST · ACADEMIA MOVIDA SST</div><h1>Informe de Gestión SST de Contratistas</h1><div class="sub">De la Reacción a la Prevención · www.movidasst.com</div></div></div>
-    <div class="meta"><div class="box"><b>Contratista</b><br>${esc(co.name||'—')}<br>${esc(co.rif||'')}</div><div class="box"><b>Contrato</b><br>${esc(c.title||'—')}<br>${esc(c.site||'')}</div><div class="box"><b>Periodo</b><br>${fmtDate(c.start)} a ${fmtDate(c.end)}</div><div class="box"><b>Estado</b><br>${esc(c.status||'')}</div></div>
-    <h2>Resumen ejecutivo</h2><div class="kpis"><div class="kpi"><span>Criticidad</span><strong>${cr.short}</strong><small>${esc(cr.level)}</small></div><div class="kpi"><span>Precalificación</span><strong>${Math.round(pq.score)}%</strong><small>${esc(pq.decision)}</small></div><div class="kpi"><span>Preinicio</span><strong>${Math.round(ps.compliance)}%</strong><small>${esc(ps.decision)}</small></div><div class="kpi"><span>Desempeño</span><strong>${Math.round(pf.score)}%</strong><small>Cierre</small></div></div><div class="decision">${esc(pf.decision)}</div>
-    <h2>Alcance y contexto</h2><div class="box"><b>Alcance</b><br>${esc(c.scope||'—')}<br><br><b>Tareas críticas</b><br>${esc((c.tasks||[]).join(', ')||'No registradas')}</div>
-    <h2>Clasificación de criticidad</h2><table><thead><tr><th>Factor</th><th>Valor</th><th>Criterio</th></tr></thead><tbody>${CRIT_FACTORS.map(([k,n,d])=>`<tr><td>${esc(n)}</td><td>${Number(c.criticality?.[k])||1}/5</td><td>${esc(d)}</td></tr>`).join('')}</tbody></table>
-    <div class="break"></div><h2>Precalificación y habilitación</h2><table><thead><tr><th>Criterio</th><th>Peso</th><th>Puntaje</th><th>Crítico</th></tr></thead><tbody>${pre}</tbody></table><div class="note"><b>Criterio técnico:</b> ${esc(c.prequal?.notes||'Sin observaciones registradas.')}</div>
-    <h2>Puerta de preinicio</h2><table><thead><tr><th>Requisito</th><th>Crítico</th><th>Estado</th></tr></thead><tbody>${pst}</tbody></table>
-    <h2>Interfaces</h2><table><thead><tr><th>Actividad</th><th>Beneficiaria</th><th>Contratista</th><th>Primacía</th><th>Brecha</th><th>Control</th></tr></thead><tbody>${interfaces||'<tr><td colspan="6">Sin interfaces registradas.</td></tr>'}</tbody></table>
-    <div class="break"></div><h2>Seguimiento de ejecución</h2><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Severidad</th><th>Hallazgo / decisión</th><th>Responsable</th><th>Compromiso</th><th>Estado</th></tr></thead><tbody>${mon||'<tr><td colspan="7">Sin registros de seguimiento.</td></tr>'}</tbody></table>
-    <h2>Evaluación de desempeño y cierre</h2><table><thead><tr><th>Dimensión</th><th>Peso</th><th>Resultado</th></tr></thead><tbody>${dims}</tbody></table><div class="box" style="margin-top:10px"><b>Fortalezas</b><br>${esc(c.performance?.strengths||'—')}<br><br><b>Brechas / condiciones para futura contratación</b><br>${esc(c.performance?.gaps||'—')}</div>
-    <div class="foot">Elaborado por David Linares Brea · Academia Movida SST · De la Reacción a la Prevención · www.movidasst.com</div>
-    <script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`;
+
+    <section class="sheet"><div class="body">
+      ${header(false)}
+      <div class="meta">
+        <div class="card wide"><span class="label">Contratista</span><div class="value">${esc(co.name||'—')} · ${esc(co.rif||'')}</div></div>
+        <div class="card"><span class="label">Estado</span><div class="value">${esc(c.status||'—')}</div></div>
+        <div class="card wide"><span class="label">Contrato</span><div class="value">${esc(c.title||'—')} · ${esc(c.site||'')}</div></div>
+        <div class="card"><span class="label">Periodo</span><div class="value">${fmtDate(c.start)} a ${fmtDate(c.end)}</div></div>
+      </div>
+      <h2>Resumen ejecutivo</h2>
+      <div class="summary">
+        <div class="kpi"><small>Criticidad</small><strong>${cr.short}</strong><span>${esc(cr.level)}</span></div>
+        <div class="kpi"><small>Precalificación</small><strong>${Math.round(pq.score)}%</strong><span>${esc(pq.decision)}</span></div>
+        <div class="kpi"><small>Preinicio</small><strong>${Math.round(ps.compliance)}%</strong><span>${esc(ps.decision)}</span></div>
+        <div class="kpi"><small>Desempeño</small><strong>${Math.round(pf.score)}%</strong><span>Evaluación de cierre</span></div>
+      </div>
+      <div class="decision"><span>${esc(pf.decision)}</span><small>Recomendación para futura contratación</small></div>
+      <h2>Alcance y contexto</h2>
+      <div class="scope"><span class="label">Alcance</span><p>${esc(c.scope||'—')}</p><span class="label">Tareas críticas</span><div class="chips">${(c.tasks||[]).length?(c.tasks||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join(''):'<span class="chip">No registradas</span>'}</div></div>
+      <h2>Clasificación de criticidad</h2>
+      <table><thead><tr><th style="width:25%">Factor</th><th style="width:12%" class="ctr">Valor</th><th>Criterio</th></tr></thead><tbody>${riskRows}</tbody></table>
+      <div class="drivers">
+        <div class="driver warn"><small>Pendientes críticos de preinicio</small><strong>${pendingCritical}</strong><span>Requieren cierre antes de autorizar</span></div>
+        <div class="driver red"><small>Acciones abiertas</small><strong>${openActions}</strong><span>Seguimiento pendiente</span></div>
+        <div class="driver ${blockers?'red':'green'}"><small>Condiciones bloqueantes</small><strong>${blockers}</strong><span>${blockers?'Revisar antes de decidir':'Sin bloqueantes marcados'}</span></div>
+      </div>
+    </div>${footer(1)}</section>
+
+    <section class="sheet"><div class="body">
+      ${header(true)}
+      <h2>Precalificación y habilitación</h2>
+      <table><thead><tr><th style="width:61%">Criterio</th><th style="width:11%" class="ctr">Peso</th><th style="width:13%" class="ctr">Puntaje</th><th style="width:15%" class="ctr">Condición</th></tr></thead><tbody>${preRows}</tbody></table>
+      <div class="decision"><span>${esc(pq.decision)}</span><small>Resultado ponderado: ${Math.round(pq.score)}%</small></div>
+      <div class="note"><b>Criterio técnico:</b> ${esc(c.prequal?.notes||'Sin observaciones registradas.')}</div>
+      <h2>Puerta de preinicio</h2>
+      <div class="checks">${psCards}</div>
+      <div class="decision" style="margin-top:10px"><span>${esc(ps.decision)}</span><small>${pendingCritical} requisito(s) crítico(s) sin cierre completo</small></div>
+    </div>${footer(2)}</section>
+
+    <section class="sheet"><div class="body">
+      ${header(true)}
+      <h2>Interfaces entre beneficiaria y contratista</h2>
+      ${interfaceCards||'<div class="note">No se registraron interfaces para este contrato.</div>'}
+      <h2>Seguimiento de ejecución</h2>
+      <div class="events">${monitoringCards||'<div class="note">No se registraron verificaciones, hallazgos o acciones.</div>'}</div>
+      <h2>Evaluación de desempeño y cierre</h2>
+      <div class="dims">${dimCards}</div>
+      <div class="decision"><span>${esc(pf.decision)}</span><small>Resultado consolidado: ${Math.round(pf.score)}%</small></div>
+      <div class="learning"><div><b>Fortalezas</b><p>${esc(c.performance?.strengths||'No registradas.')}</p></div><div><b>Brechas / condiciones para futura contratación</b><p>${esc(c.performance?.gaps||'No registradas.')}</p></div></div>
+      <div class="note"><b>Lectura técnica:</b> el resultado final no debe interpretarse solo por accidentabilidad. Debe considerarse la eficacia de controles, cierre de acciones, reincidencia, interfaces y cualquier condición bloqueante.</div>
+      <div class="signatures"><div class="sig">Profesional SST evaluador · Nombre / firma / fecha</div><div class="sig">Responsable de Operaciones / Contrato · Nombre / firma / fecha</div></div>
+    </div>${footer(3)}</section>
+    <script>window.onload=()=>setTimeout(()=>window.print(),450)<\/script></body></html>`;
     const w=window.open('','_blank'); if(!w){notify('El navegador bloqueó la ventana del informe. Habilita ventanas emergentes e intenta nuevamente.','warn');return;} w.document.open();w.document.write(html);w.document.close();
   }
 
