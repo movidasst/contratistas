@@ -4,7 +4,7 @@
   const VIEW_TITLES = {
     dashboard:'Dashboard', contractors:'Contratistas', contracts:'Contratos', criticality:'Clasificación de criticidad',
     prequal:'Precalificación y habilitación', prestart:'Preinicio e interfaces', monitoring:'Seguimiento de ejecución',
-    performance:'Desempeño y cierre', references:'Referencias y criterio técnico'
+    performance:'Desempeño y cierre', assurance:'Controles y evidencias', backup:'Respaldo y restauración', references:'Referencias y criterio técnico'
   };
   const STAGES = ['Borrador','En evaluación','Adjudicado','Pendiente de habilitación','Habilitado','En ejecución','En cierre','Cerrado'];
   const GUIDED_STEPS = [
@@ -101,7 +101,10 @@
     try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : seed(); }
     catch(e){ return seed(); }
   }
-  function save(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); }
+  function save(){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true;}
+    catch(e){notify('No fue posible guardar en el navegador. Revisa el espacio disponible y descarga un respaldo.','warn');return false;}
+  }
   function uid(prefix){ return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`; }
   function esc(v=''){ return String(v).replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
   function fmtDate(v){ if(!v) return '—'; const d=new Date(v+'T00:00:00'); return Number.isNaN(d.getTime())?v:d.toLocaleDateString('es-VE',{day:'2-digit',month:'short',year:'numeric'}); }
@@ -158,7 +161,7 @@
     title.textContent=VIEW_TITLES[currentView];
     $$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
     refreshPicker();
-    const fn={dashboard:renderDashboard,contractors:renderContractors,contracts:renderContracts,criticality:renderCriticality,prequal:renderPrequal,prestart:renderPrestart,monitoring:renderMonitoring,performance:renderPerformance,references:renderReferences}[currentView];
+    const fn={dashboard:renderDashboard,contractors:renderContractors,contracts:renderContracts,criticality:renderCriticality,prequal:renderPrequal,prestart:renderPrestart,monitoring:renderMonitoring,assurance:window.renderAssurance,performance:renderPerformance,backup:window.renderBackup,references:renderReferences}[currentView];
     view.innerHTML=fn(); bindView();
     $('#sidebar').classList.remove('open');
   }
