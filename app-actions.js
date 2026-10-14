@@ -1,7 +1,7 @@
   function bindView(){
     $$('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
     $$('[data-open-contract]').forEach(b=>b.onclick=()=>{state.activeContractId=b.dataset.openContract;save();setView('contracts')});
-    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='load-example')b.onclick=loadExampleCase; if(a==='delete-example')b.onclick=deleteExampleCase; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
+    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='load-example')b.onclick=loadExampleCase; if(a==='delete-example')b.onclick=deleteExampleCase; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='save-assurance')b.onclick=window.saveAssurance; if(a==='download-backup')b.onclick=window.downloadBackup; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
     $$('[data-edit-contractor]').forEach(b=>b.onclick=()=>openContractorModal(b.dataset.editContractor));
     $$('[data-edit-monitoring]').forEach(b=>b.onclick=()=>openMonitoringModal(b.dataset.editMonitoring));
     $$('.crit-range').forEach(el=>el.oninput=()=>{const c=activeContract();c.criticality=c.criticality||{};c.criticality[el.dataset.key]=Number(el.value);$('#crit-'+el.dataset.key).textContent=el.value;save();const r=criticalityResult(c);$('#critTotal').textContent=`${r.total}/25`;$('#critProgress').style.width=`${r.total/25*100}%`;});
@@ -11,49 +11,49 @@
     $$('[data-remove-interface]').forEach(b=>b.onclick=()=>{const c=activeContract();c.prestart.interfaces.splice(Number(b.dataset.removeInterface),1);save();render();});
     $$('.perf-range').forEach(el=>el.oninput=()=>{const c=activeContract();c.performance[el.dataset.key]=Number(el.value);save();$('#dim-'+el.dataset.key).textContent=`${el.value}%`;updatePerfResult();});
     $$('.perf-blocker').forEach(el=>el.onchange=()=>{const c=activeContract();c.performance.blockers=c.performance.blockers||{};c.performance.blockers[el.dataset.key]=el.checked;save();updatePerfResult();});
+    const input=$('#backupInput');if(input)input.onchange=e=>window.restoreBackupFile(e.target.files?.[0]);
     const search=$('#contractorSearch'); if(search)search.oninput=()=>{const q=search.value.toLowerCase().trim();const rows=state.contractors.filter(x=>(x.name+' '+x.rif+' '+x.contact).toLowerCase().includes(q));$('#contractorsTable').innerHTML=contractorsTable(rows);bindView();};
   }
 
   function cloneData(x){ return JSON.parse(JSON.stringify(x)); }
   function loadExampleCase(){
     const demo=exampleData();
-    // El ejemplo se carga como expediente independiente sin borrar datos reales.
-    state.contracts=state.contracts.filter(x=>x.id!=='ct-demo' && !(x.id==='ct-1'&&x.title==='Mantenimiento mayor de tanque TK-210'));
-    const legacyIds=new Set(['co-demo','co-1']);
-    state.contractors=state.contractors.filter(x=>!legacyIds.has(x.id));
-    // El segundo contratista de la primera versión era también dato precargado sin uso.
-    state.contractors=state.contractors.filter(x=>!(x.id==='co-2'&&x.name==='Mantenimiento Integral del Centro, C.A.'&&!state.contracts.some(c=>c.contractorId===x.id)));
+    state.contracts=state.contracts.filter(x=>x.id!=='ct-demo');
+    state.contractors=state.contractors.filter(x=>x.id!=='co-demo');
     state.contractors.push(cloneData(demo.contractor));
     state.contracts.push(cloneData(demo.contract));
     state.activeContractId=demo.contract.id;
-    save();
-    notify('Caso de práctica cargado. Puedes recorrer los 7 pasos y eliminarlo cuando termines.','success');
-    render();
+    save();notify('Caso de práctica cargado sin modificar otros registros.','success');render();
   }
   function deleteExampleCase(){
-    const demoContractIds=new Set(['ct-demo']);
-    state.contracts=state.contracts.filter(x=>!(demoContractIds.has(x.id)||(x.id==='ct-1'&&x.title==='Mantenimiento mayor de tanque TK-210')));
-    const used=new Set(state.contracts.map(x=>x.contractorId));
-    state.contractors=state.contractors.filter(x=>{
-      if(x.id==='co-demo') return false;
-      if(x.id==='co-1'&&x.name==='Servicios Industriales Andinos, C.A.') return false;
-      if(x.id==='co-2'&&x.name==='Mantenimiento Integral del Centro, C.A.'&&!used.has(x.id)) return false;
-      return true;
-    });
-    if(!state.contracts.some(x=>x.id===state.activeContractId)) state.activeContractId=state.contracts[0]?.id||null;
-    save();
-    notify('Caso de práctica eliminado. Tus demás registros se conservaron.','success');
-    render();
+    state.contracts=state.contracts.filter(x=>x.id!=='ct-demo');
+    if(!state.contracts.some(x=>x.contractorId==='co-demo'))
+      state.contractors=state.contractors.filter(x=>x.id!=='co-demo');
+    if(!state.contracts.some(x=>x.id===state.activeContractId))
+      state.activeContractId=state.contracts[0]?.id||null;
+    save();notify('Caso de práctica eliminado sin tocar registros reales.','success');render();
   }
 
   function updatePqResult(){const r=prequalResult(activeContract());$('#pqScore').textContent=`${pct(r.score)}%`;$('#pqProgress').style.width=`${r.score}%`;$('#pqDecision').textContent=r.decision;}
   function updatePerfResult(){const r=performanceResult(activeContract());$('#perfScore').textContent=`${pct(r.score)}%`;$('#perfProgress').style.width=`${r.score}%`;$('#perfDecision').textContent=r.decision;}
-  function saveContractMeta(){const c=activeContract();c.status=$('#contractStatus').value;c.scope=$('#contractScope').value.trim();save();notify('Contrato actualizado.','success');render();}
+  function saveContractMeta(){
+    const c=activeContract(), next=$('#contractStatus').value;
+    if(['Habilitado','En ejecución','En cierre','Cerrado'].includes(next) &&
+       (prequalResult(c).decision==='NO HABILITADA'||prestartResult(c).decision!=='AUTORIZAR INICIO')){
+      notify('Estado no permitido: la precalificación o la puerta de preinicio no están aprobadas.','warn');render();return;
+    }
+    c.status=next;c.scope=$('#contractScope').value.trim();save();notify('Contrato actualizado.','success');render();
+  }
   function editTasks(){const c=activeContract();const txt=prompt('Tareas críticas separadas por coma:',(c.tasks||[]).join(', '));if(txt===null)return;c.tasks=txt.split(',').map(x=>x.trim()).filter(Boolean);save();render();}
   function savePqNotes(){activeContract().prequal.notes=$('#pqNotes').value.trim();save();notify('Criterio de precalificación guardado.','success');}
   function addInterface(){const c=activeContract();c.prestart=c.prestart||{checks:{},interfaces:[]};c.prestart.interfaces.push({activity:'',client:'',contractor:'',primacy:'',gap:'',control:''});save();render();}
   function saveInterfaces(){const c=activeContract();$$('[data-interface]').forEach(card=>{const i=Number(card.dataset.interface);card.querySelectorAll('.int-field').forEach(el=>c.prestart.interfaces[i][el.dataset.k]=el.value.trim());});save();notify('Mapa de interfaces actualizado.','success');}
-  function applyPrestartStatus(){const c=activeContract();const r=prestartResult(c);if(r.decision==='AUTORIZAR INICIO')c.status='Habilitado';else c.status='Pendiente de habilitación';save();notify(`Estado actualizado: ${c.status}.`,r.decision==='AUTORIZAR INICIO'?'success':'warn');render();}
+  function applyPrestartStatus(){
+    const c=activeContract(), r=prestartResult(c), pq=prequalResult(c);
+    const allowed=r.decision==='AUTORIZAR INICIO' && pq.decision!=='NO HABILITADA';
+    c.status=allowed?'Habilitado':'Pendiente de habilitación';
+    save();notify(allowed?'Habilitación registrada tras verificar precalificación y preinicio.':'No autorizado: revisar precalificación y pendientes de preinicio.',allowed?'success':'warn');render();
+  }
   function savePerformanceNotes(){const c=activeContract();c.performance.strengths=$('#perfStrengths').value.trim();c.performance.gaps=$('#perfGaps').value.trim();save();notify('Aprendizajes de cierre guardados.','success');}
   function applyCloseStatus(){const c=activeContract();c.status='En cierre';save();notify('Contrato movido a fase de cierre.','success');render();}
 
@@ -80,7 +80,7 @@
     if(!c){notify('Selecciona un contrato para generar el Excel.','warn');return;}
     if(typeof XLSX==='undefined'){notify('No se pudo cargar el generador de Excel. Intenta recargar la página.','warn');return;}
     const wb=XLSX.utils.book_new();
-    const add=(name,rows)=>{const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=rows[0].map((_,i)=>({wch:i===0?28:52})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));};
+    const add=(name,rows)=>{const safe=rows.map(row=>row.map(v=>typeof v==='string'&&/^[=+@\-\t\r]/.test(v.trimStart())?"'"+v:v));const ws=XLSX.utils.aoa_to_sheet(safe); ws['!cols']=rows[0].map((_,i)=>({wch:i===0?28:52})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));};
 
     add('Resumen',[
       ['GESTIÓN SST DE CONTRATISTAS - LA MOVIDA DE SST',''],
@@ -126,6 +126,10 @@
       ...(c.monitoring||[]).map(x=>[x.date||'',x.type||'',x.severity||'',x.finding||'',x.owner||'',x.due||'',x.status||''])
     ]);
 
+    add('Controles API',[
+      ['Control','Fuente','Estado','Responsable','Fecha','Evidencia'],
+      ...window.assuranceStats(c).rows.map(i=>{const x=c.assurance?.items?.[i.id]||{};return [i.name,i.ref,({yes:'Conforme',no:'No conforme',pending:'Pendiente',na:'No aplica'})[x.status]||'Pendiente',x.owner||'',x.date||'',x.evidence||''];})
+    ]);
     add('Desempeño',[
       ['Dimensión','Peso %','Resultado %'],
       ...PERFORMANCE_DIMS.map(([k,n,w])=>[n,w,Number(c.performance?.[k])||0]),
