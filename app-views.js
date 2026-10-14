@@ -55,7 +55,8 @@
       ['Internacional','IOGP 423-01','Evaluación de capacidad HSE y sistema de puntuación como referencia metodológica.'],
       ['Internacional','IOGP 423-02','HSE Plan y Bridging Document para resolver interfaces entre sistemas de gestión.'],
       ['Gestión del riesgo','ISO 31000 / IEC 31010','Arquitectura de decisión basada en riesgo y selección de técnicas de evaluación.'],
-      ['Desempeño','ISO 45004','Seguimiento, medición, análisis y evaluación del desempeño de SST.']
+      ['Desempeño','ISO 45004','Seguimiento, medición, análisis y evaluación del desempeño de SST.'],
+      ['Referencia sectorial internacional','API RP 1646:2025 — Safe Work Practices for Contractors Working at Petroleum Dispensing and Storage Facilities','Prácticas de trabajo seguro para contratistas en instalaciones de suministro y almacenamiento de productos petrolíferos. Su ámbito es sectorial: no es una norma legal general de SST en Venezuela.']
     ];
     return `<div class="hero-panel"><div class="kicker">Mapa de referencias</div><h2>Diferenciar obligación, referencia y metodología</h2><p>La aplicación evita presentar una buena práctica internacional o una norma interna de PDVSA como si fuera legislación general venezolana.</p></div><div class="section grid grid-3">${refs.map(([type,name,desc])=>`<div class="ref-card"><span class="ref-badge">${esc(type)}</span><h4>${esc(name)}</h4><p>${esc(desc)}</p></div>`).join('')}</div><div class="section callout warn"><strong>Uso profesional:</strong> antes de adoptar umbrales, puntuaciones o decisiones automáticas como política corporativa, la organización debe definir y aprobar formalmente sus criterios internos, considerando su contexto, obligaciones y gobernanza.</div>`;
   }
