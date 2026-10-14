@@ -47,3 +47,27 @@ La V1 guarda automáticamente la información en el navegador para simplificar l
 **La Movida de SST**  
 De la Reacción a la Prevención  
 https://www.movidasst.com
+
+## Ampliación API RP 1646 (2025) — pendiente de revisión y fusión
+
+- Catálogo contextual de controles para tareas críticas, con **estado, evidencia, fecha y responsable**.
+- La nueva vista de controles complementa, pero **no sustituye**, precalificación ni puerta de preinicio.
+- La exportación Excel incorpora la hoja **Controles API** y el informe PDF un anexo adicional.
+- Nuevo respaldo JSON local y restauración con validación estructural, límite de tamaño y confirmación previa.
+- Se evita eliminar registros antiguos con identificadores genéricos al cargar o borrar el ejemplo.
+- No se permite pasar manualmente a «Habilitado» o «En ejecución» si precalificación o preinicio están pendientes o bloqueados.
+- Se advierte sobre la privacidad: el almacenamiento sigue siendo `localStorage`, sin cifrado, autenticación ni sincronización multiusuario.
+
+**Referencia:** American Petroleum Institute, API RP 1646:2025, tercera edición, *Safe Work Practices for Contractors Working at Petroleum Dispensing and Storage Facilities* (Prácticas de trabajo seguro para contratistas en instalaciones de suministro y almacenamiento de productos petrolíferos). Se usa como **referencia sectorial orientativa**, no como obligación legal general en Venezuela.
+
+### Pruebas de aceptación antes de publicar
+
+1. Crear un contratista y contrato con tareas críticas; registrar controles, responsables y evidencias.
+2. Comprobar que «Conforme» sin evidencia no se acepta y que «No aplica» exige justificación.
+3. Exportar Excel y comprobar la nueva hoja; generar el PDF y verificar el anexo de controles.
+4. Descargar y restaurar un respaldo de prueba, verificando que no se pierden contratos.
+5. Intentar marcar «Habilitado» sin precalificación/preinicio satisfactorios.
+6. Cargar/eliminar el ejemplo y confirmar que los datos ajenos al ejemplo permanecen intactos.
+7. Validar la navegación, lectura y edición en un dispositivo móvil.
+
+No despliegue automático hasta completar pruebas manuales en navegador.
