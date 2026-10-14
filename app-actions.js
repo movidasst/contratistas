@@ -157,6 +157,11 @@
     const psCards=PRESTART.map(i=>`<div class="check"><div><b>${esc(i.title)}</b><p>${esc(i.desc)}</p></div><div class="check-side">${i.critical?'<small>CRÍTICO</small>':''}${stateBadge(c.prestart?.checks?.[i.id])}</div></div>`).join('');
     const interfaceCards=(c.prestart?.interfaces||[]).map((x,i)=>`<div class="interface"><div class="interface-title"><span>${i+1}</span><b>${esc(x.activity||'Interfaz')}</b></div><div class="interface-grid"><div><small>Beneficiaria</small><p>${esc(x.client||'—')}</p></div><div><small>Contratista</small><p>${esc(x.contractor||'—')}</p></div><div><small>Criterio que prevalece</small><p>${esc(x.primacy||'—')}</p></div><div><small>Brecha</small><p>${esc(x.gap||'—')}</p></div><div class="wide"><small>Control / evidencia acordada</small><p>${esc(x.control||'—')}</p></div></div></div>`).join('');
     const monitoringCards=(c.monitoring||[]).map(x=>`<div class="event"><div class="event-top"><b>${esc(x.type||'Registro')}</b><span class="badge ${x.status==='Cerrada'?'ok':x.severity==='Crítica'||x.severity==='Mayor'?'no':'wait'}">${esc(x.status||'')}</span></div><div class="event-meta">${fmtDate(x.date)} · ${esc(x.severity||'')} · Responsable: ${esc(x.owner||'—')} · Compromiso: ${fmtDate(x.due)}</div><p>${esc(x.finding||'—')}</p></div>`).join('');
+    const assuranceCards=window.assuranceStats(c).rows.map(i=>{
+      const x=c.assurance?.items?.[i.id]||{};
+      const status=({yes:'Conforme',no:'No conforme',na:'No aplica',pending:'Pendiente'})[x.status]||'Pendiente';
+      return '<div class="check"><div><b>'+esc(i.name)+'</b><p>'+esc(i.ref)+'</p><p>Estado: '+esc(status)+' · Responsable: '+esc(x.owner||'—')+' · Fecha: '+esc(x.date||'—')+'</p><p>'+esc(x.evidence||'Sin evidencia registrada')+'</p></div></div>';
+    }).join('');
     const dimCards=PERFORMANCE_DIMS.map(([k,n,w])=>`<div class="dim"><small>${esc(n)}</small><strong>${Number(c.performance?.[k])||0}%</strong><span>Peso ${w}%</span></div>`).join('');
     const riskRows=CRIT_FACTORS.map(([k,n,d])=>`<tr><td><b>${esc(n)}</b></td><td class="ctr score">${Number(c.criticality?.[k])||1}/5</td><td>${esc(d)}</td></tr>`).join('');
 
@@ -237,6 +242,12 @@
       <div class="note"><b>Lectura técnica:</b> el resultado final no debe interpretarse solo por accidentabilidad. Debe considerarse la eficacia de controles, cierre de acciones, reincidencia, interfaces y cualquier condición bloqueante.</div>
       <div class="signatures"><div class="sig">Profesional SST evaluador · Nombre / firma / fecha</div><div class="sig">Responsable de Operaciones / Contrato · Nombre / firma / fecha</div></div>
     </div>${footer(3)}</section>
+    <section class="sheet"><div class="body">
+      ${header(true)}
+      <h2>Controles y evidencias de ejecución</h2>
+      <div class="note"><b>Aplicabilidad:</b> referencias sectoriales de API RP 1646:2025, seleccionadas de acuerdo con las tareas declaradas. No sustituyen obligaciones venezolanas ni autorización de trabajos.</div>
+      <div class="checks">${assuranceCards||'<div class="note">No se identificaron controles aplicables.</div>'}</div>
+    </div>${footer(4)}</section>
     <script>window.onload=()=>setTimeout(()=>window.print(),450)<\/script></body></html>`;
     const w=window.open('','_blank'); if(!w){notify('El navegador bloqueó la ventana del informe. Habilita ventanas emergentes e intenta nuevamente.','warn');return;} w.document.open();w.document.write(html);w.document.close();
   }
