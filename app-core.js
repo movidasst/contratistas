@@ -107,7 +107,7 @@
   }
   function uid(prefix){ return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`; }
   function esc(v=''){ return String(v).replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
-  function fmtDate(v){ if(!v) return '—'; const d=new Date(v+'T00:00:00'); return Number.isNaN(d.getTime())?v:d.toLocaleDateString('es-VE',{day:'2-digit',month:'short',year:'numeric'}); }
+  function fmtDate(v){ if(!v) return '—'; const d=new Date(v+'T00:00:00'); return Number.isNaN(d.getTime())?esc(v):d.toLocaleDateString('es-VE',{day:'2-digit',month:'short',year:'numeric'}); }
   function activeContract(){ return state.contracts.find(x=>x.id===state.activeContractId) || state.contracts[0] || null; }
   function contractorById(id){ return state.contractors.find(x=>x.id===id); }
   function pct(v){ return Math.round(v || 0); }
