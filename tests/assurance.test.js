@@ -22,7 +22,7 @@ const contract={
  scope:'Ingreso a tanque y soldadura',tasks:['Espacios confinados','Trabajo en caliente','Izamiento de cargas','Control de fuentes de energía'],
  assurance:{items:{ast:{status:'yes',evidence:'AST firmado',owner:'Supervisor',date:'2026-10-14'}}}
 };
-const context={window:{},state:{contracts:[contract],contractors:[]},
+const context={window:{},localStorage:{getItem:()=>null},state:{contracts:[contract],contractors:[]},
  activeContract:()=>contract,
  esc:v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 };
