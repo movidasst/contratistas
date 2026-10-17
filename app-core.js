@@ -27,16 +27,18 @@
   ];
 
   const PREQUAL = [
-    {id:'legal',name:'Cumplimiento legal y organización SST',desc:'Estructura, responsabilidades, Servicio SST, participación y evidencias aplicables.',weight:15,critical:true},
-    {id:'experience',name:'Experiencia en trabajos comparables',desc:'Experiencia demostrable en alcances y contextos de riesgo similares.',weight:8,critical:false},
-    {id:'risk',name:'Identificación de peligros y gestión del riesgo',desc:'Métodos, evaluación, controles y revisión ante cambios.',weight:14,critical:true},
+    {id:'legal',name:'Cumplimiento legal y organización SST',desc:'Estructura, responsabilidades, Servicio SST, participación y evidencias aplicables.',weight:14,critical:true},
+    {id:'experience',name:'Experiencia en trabajos comparables',desc:'Experiencia demostrable en alcances y contextos de riesgo similares.',weight:7,critical:false},
+    {id:'risk',name:'Identificación de peligros y gestión del riesgo',desc:'Métodos, evaluación, controles y revisión ante cambios.',weight:13,critical:true},
     {id:'competence',name:'Competencia del personal',desc:'Formación, experiencia, certificaciones y supervisión según el alcance.',weight:12,critical:true},
-    {id:'equipment',name:'Equipos, herramientas y mantenimiento',desc:'Aptitud, certificación, inspección y mantenimiento de equipos.',weight:10,critical:true},
-    {id:'procedures',name:'Procedimientos y controles operacionales',desc:'Procedimientos aplicables, permisos y prácticas de trabajo seguras.',weight:12,critical:true},
-    {id:'emergency',name:'Emergencias y continuidad',desc:'Plan, recursos, coordinación y respuesta compatible con la instalación.',weight:8,critical:false},
-    {id:'incidents',name:'Incidentes, aprendizaje y acciones',desc:'Investigación, seguimiento, lecciones aprendidas y control de reincidencia.',weight:8,critical:false},
-    {id:'assurance',name:'Inspección, auditoría y aseguramiento',desc:'Verificación de implementación, seguimiento y mejora.',weight:8,critical:false},
-    {id:'subcontractors',name:'Gestión de subcontratistas',desc:'Selección, requisitos, interfaces y control de empresas subcontratadas.',weight:5,critical:false}
+    {id:'equipment',name:'Equipos, herramientas y mantenimiento',desc:'Aptitud, certificación, inspección y mantenimiento de equipos.',weight:9,critical:true},
+    {id:'procedures',name:'Procedimientos y controles operacionales',desc:'Procedimientos aplicables, permisos y prácticas de trabajo seguras.',weight:10,critical:true},
+    {id:'emergency',name:'Emergencias y continuidad',desc:'Plan, recursos, coordinación y respuesta compatible con la instalación.',weight:7,critical:false},
+    {id:'incidents',name:'Incidentes, aprendizaje y acciones',desc:'Investigación, seguimiento, lecciones aprendidas y control de reincidencia.',weight:7,critical:false},
+    {id:'assurance',name:'Inspección, auditoría y aseguramiento',desc:'Verificación de implementación, seguimiento y mejora.',weight:6,critical:false},
+    {id:'subcontractors',name:'Gestión de subcontratistas',desc:'Selección, requisitos, interfaces y control de empresas subcontratadas.',weight:5,critical:false},
+    {id:'technical',name:'Capacidad técnica y recursos',desc:'Solvencia operativa, equipos, cronograma y recursos para el alcance contratado.',weight:5,critical:false},
+    {id:'financial',name:'Capacidad financiera para sostener el contrato',desc:'Referencia comercial complementaria; no compensa brechas críticas de SST.',weight:5,critical:false}
   ];
 
   const PRESTART = [
