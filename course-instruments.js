@@ -141,6 +141,34 @@
     }));
     document.querySelectorAll('.course-card [data-go]').forEach(b => b.addEventListener('click', () => setView(b.dataset.go)));
   }
+  function coursePdf(c, header, footer) {
+    const values = c.legalChecklist?.items || {};
+    const legalRows = LEGAL_CHECKS.map(i => {
+      const v = values[i.id] || {}, status = ({yes:'Cumple',no:'No cumple',na:'No aplica',pending:'Pendiente'})[v.status] || 'Por verificar';
+      return '<tr><td><b>' + esc(i.label) + '</b><span>' + esc(i.ref) + '</span></td><td>' + esc(status) + '</td><td>' + esc(v.evidence || 'Sin evidencia / justificación') + '</td><td>' + esc(v.owner || '—') + '</td></tr>';
+    }).join('');
+    let output = '<section class="sheet"><div class="body">' + header(true) + '<h2>Módulo 1 · Lista legal y corporativa</h2>' +
+      '<div class="note"><b>Criterio:</b> validar aplicabilidad y vigencia de cada requisito. Las referencias técnicas no son obligaciones legales generales.</div>' +
+      '<table><thead><tr><th style="width:36%">Requisito y referencia</th><th style="width:14%">Estado</th><th style="width:37%">Evidencia / brecha</th><th>Responsable</th></tr></thead><tbody>' + legalRows + '</tbody></table>' +
+      '</div>' + footer(5) + '</section>';
+    const list = c.iperc || [];
+    const groups = []; for (let i = 0; i < list.length; i += 3) groups.push(list.slice(i, i + 3));
+    if (!groups.length) groups.push([]);
+    groups.forEach((group, page) => {
+      const tasks = group.map((x, idx) => '<div class="interface"><div class="interface-title"><span>' + (page*3 + idx + 1) + '</span><b>' + esc(x.task || 'Tarea') + '</b></div>' +
+        '<div class="interface-grid"><div><small>Actividad</small><p>' + esc(x.activity || '—') + '</p></div><div><small>Peligro</small><p>' + esc(x.hazard || '—') + '</p></div>' +
+        '<div><small>Exposición</small><p>' + esc(x.exposure || '—') + '</p></div><div><small>Evento</small><p>' + esc(x.event || '—') + '</p></div>' +
+        '<div><small>Consecuencia</small><p>' + esc(x.consequence || '—') + '</p></div><div><small>Método / valoración</small><p>' + esc(x.risk || '—') + '</p></div>' +
+        '<div class="wide"><small>Controles y verificación</small><p>' + esc(x.controls || '—') + '</p></div>' +
+        '<div><small>Permiso / ATS</small><p>' + esc(x.permitType || '—') + '</p></div><div><small>Estado documental</small><p>' + esc(x.permitStatus || 'Pendiente') + '</p></div>' +
+        '<div><small>Responsable y fecha</small><p>' + esc(x.owner || '—') + ' · ' + esc(x.date || '—') + '</p></div><div><small>Evidencia / código</small><p>' + esc(x.evidence || '—') + '</p></div></div></div>').join('');
+      output += '<section class="sheet"><div class="body">' + header(true) + '<h2>Módulo 3 · IPERC y permisos por tarea</h2>' +
+        '<div class="note"><b>Uso documental:</b> no sustituye la firma ni la autorización real del permiso de trabajo, ATS o controles del centro de trabajo.</div>' +
+        (tasks || '<div class="note">No se han registrado tareas IPERC.</div>') + '</div>' + footer(6 + page) + '</section>';
+    });
+    return output;
+  }
+  window.renderCoursePdf = coursePdf;
   window.renderLegal = legalView;
   window.renderIperc = ipercView;
   window.courseOverview = courseOverview;
