@@ -1,8 +1,9 @@
   'use strict';
 
-  const STORAGE_KEY = 'movidasst_contratistas_v1';
+  let STORAGE_KEY = null;
+  let authenticated = false;
   const VIEW_TITLES = {
-    dashboard:'Dashboard', contractors:'Contratistas', contracts:'Contratos', criticality:'Clasificación de criticidad',
+    dashboard:'Dashboard', legal:'Marco legal y corporativo', iperc:'IPERC y permisos por tarea', contractors:'Contratistas', contracts:'Contratos', criticality:'Clasificación de criticidad',
     prequal:'Precalificación y habilitación', prestart:'Preinicio e interfaces', monitoring:'Seguimiento de ejecución',
     performance:'Desempeño y cierre', assurance:'Controles y evidencias', backup:'Respaldo y restauración', references:'Referencias y criterio técnico'
   };
@@ -87,7 +88,7 @@
     }
   });
 
-  let state = load();
+  let state = seed();
   let currentView = location.hash.replace('#/','') || 'dashboard';
 
   const $ = s => document.querySelector(s);
@@ -98,10 +99,12 @@
   const alertBox = $('#appAlert');
 
   function load(){
+    if (!authenticated || !STORAGE_KEY) return seed();
     try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : seed(); }
     catch(e){ return seed(); }
   }
   function save(){
+    if (!authenticated || !STORAGE_KEY) return false;
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true;}
     catch(e){notify('No fue posible guardar en el navegador. Revisa el espacio disponible y descarga un respaldo.','warn');return false;}
   }
@@ -157,12 +160,15 @@
   }
   function setView(v){ currentView=v; location.hash=`/${v}`; render(); }
   function render(){
+    if (!authenticated) return;
     if(!VIEW_TITLES[currentView]) currentView='dashboard';
     title.textContent=VIEW_TITLES[currentView];
     $$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
     refreshPicker();
-    const fn={dashboard:renderDashboard,contractors:renderContractors,contracts:renderContracts,criticality:renderCriticality,prequal:renderPrequal,prestart:renderPrestart,monitoring:renderMonitoring,assurance:window.renderAssurance,performance:renderPerformance,backup:window.renderBackup,references:renderReferences}[currentView];
+    const fn={dashboard:renderDashboard,legal:window.renderLegal,iperc:window.renderIperc,contractors:renderContractors,contracts:renderContracts,criticality:renderCriticality,prequal:renderPrequal,prestart:renderPrestart,monitoring:renderMonitoring,assurance:window.renderAssurance,performance:renderPerformance,backup:window.renderBackup,references:renderReferences}[currentView];
     view.innerHTML=fn(); bindView();
+    if(currentView==='dashboard' && window.courseOverview) view.insertAdjacentHTML('beforeend', window.courseOverview());
+    window.bindCourseViews?.();
     $('#sidebar').classList.remove('open');
   }
 
@@ -229,3 +235,21 @@
     if(!rows.length) return '<div class="empty"><strong>Sin contratos</strong>Agrega el primer contrato para iniciar.</div>';
     return `<div class="table-wrap"><table class="table"><thead><tr><th>Contrato</th><th>Contratista</th><th>Criticidad</th><th>Estado</th><th>Inicio</th><th></th></tr></thead><tbody>${rows.map(c=>`<tr><td><strong class="text-navy">${esc(c.title)}</strong><div class="small muted">${esc(c.site||'')}</div></td><td>${esc(contractorById(c.contractorId)?.name||'—')}</td><td>${tag(criticalityResult(c).short,criticalityResult(c).short==='N3'?'yellow':'teal')}</td><td>${statusTag(c.status)}</td><td>${fmtDate(c.start)}</td><td class="right"><button class="btn btn-ghost btn-sm" data-open-contract="${c.id}">Abrir</button></td></tr>`).join('')}</tbody></table></div>`;
   }
+
+  window.addEventListener('movida:integrante-autenticado', event => {
+    const key = event.detail?.storageKey;
+    if (!/^movidasst_contratistas_v2_[0-9a-f]{64}$/.test(key || '')) return;
+    authenticated = true;
+    STORAGE_KEY = key;
+    state = load();
+    currentView = location.hash.replace('#/','') || 'dashboard';
+    render();
+  });
+  window.addEventListener('movida:integrante-salio', () => {
+    authenticated = false;
+    STORAGE_KEY = null;
+    state = seed();
+    view.replaceChildren();
+    $('#modalBackdrop').hidden = true;
+    $('#sidebar').classList.remove('open');
+  });
