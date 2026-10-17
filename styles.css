@@ -31,3 +31,63 @@
 .assurance-card .form-grid{gap:10px}
 .panel p{line-height:1.5}
 @media(max-width:760px){.assurance-head{grid-template-columns:1fr}.assurance-card .form-grid{grid-template-columns:1fr}.assurance-card .field.full{grid-column:1}.assurance-card{padding:12px}}
+
+
+/* Acceso de integrantes y navegación curricular */
+#app[hidden], #loginGate[hidden] { display:none!important; }
+.login-gate { min-height:100svh; display:grid; place-items:center; padding:24px; background:linear-gradient(135deg,#00205b 0%,#063c64 46%,#007b85 100%); }
+.login-shell { width:min(1060px,100%); display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,440px); align-items:center; gap:clamp(22px,5vw,65px); }
+.login-intro { color:#fff; }
+.login-logo { width:105px; height:105px; object-fit:contain; margin-bottom:10px; }
+.login-eyebrow { color:#aee4e2; font-size:12px; font-weight:900; letter-spacing:2px; }
+.login-intro h1 { font-size:clamp(34px,4.5vw,58px); line-height:1.05; letter-spacing:-1.5px; margin:15px 0; }
+.login-intro h1 em { color:#ffb600; font-style:normal; }
+.login-intro>p:not(.login-eyebrow) { max-width:480px; font-size:16px; line-height:1.65; color:#dbf3f4; }
+.login-pill { display:inline-block; padding:10px 14px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); border-radius:999px; font-weight:800; font-size:12px; margin-top:18px; }
+.login-card { background:#fff; border-radius:24px; padding:clamp(22px,3vw,40px); box-shadow:0 25px 85px rgba(0,11,42,.25); min-width:0; }
+.login-label { font-size:11px; letter-spacing:1.4px; font-weight:900; color:#007b85; }
+.login-card h2 { color:#00205b; font-size:25px; line-height:1.15; margin:11px 0 9px; }
+.login-card>p { color:#64748b; line-height:1.6; font-size:13px; margin:0 0 20px; }
+.login-card label { display:block; font-weight:850; color:#00205b; font-size:12px; margin:15px 0 6px; }
+.login-card input { border:1px solid #cbd7df; border-radius:11px; padding:13px 12px; width:100%; min-width:0; color:#00205b; background:#fff; }
+.login-card input:focus { outline:3px solid rgba(0,123,133,.19); border-color:#007b85; }
+.password-row { display:flex; gap:5px; }
+.password-row button { border:1px solid #cbd7df; color:#00205b; border-radius:10px; padding:0 12px; background:#f8fafc; font-size:12px; font-weight:800; }
+.login-submit { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; margin-top:20px; padding:14px 16px; border:0; border-radius:12px; background:#007b85; color:white; font-weight:900; text-align:left; }
+.login-submit:disabled { opacity:.65; cursor:wait; }
+.login-message { min-height:22px; color:#a32d2d; font-size:12px; font-weight:700; }
+.login-message.success { color:#287245; }
+.login-card .login-register { margin:10px 0; }
+.login-register a { color:#007b85; font-weight:900; }
+.login-card small { display:block; border-top:1px solid #e2e8f0; padding-top:15px; color:#64748b; font-size:11px; line-height:1.5; }
+.member-chip { max-width:125px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#00205b; font-size:11px; font-weight:850; }
+.logout-sidebar { width:100%; margin-top:12px; padding:9px 12px; background:transparent; color:#bfe7ea; border:1px solid rgba(255,255,255,.2); border-radius:10px; font-weight:800; text-align:left; }
+.logout-sidebar:hover { background:rgba(255,255,255,.08); color:#fff; }
+.course-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.course-card { border:1px solid var(--line); border-radius:15px; padding:16px; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.course-number { font-size:10px; font-weight:950; color:#007b85; letter-spacing:1.2px; }
+.course-card h4 { color:#00205b; margin:0; font-size:15px; line-height:1.25; }
+.course-card p { margin:0; color:#64748b; line-height:1.5; font-size:12px; flex:1; }
+.course-instrument { padding:9px; border-radius:10px; background:#edf6f7; color:#006970; font-size:11px; font-weight:850; }
+.course-card button { margin-top:4px; width:100%; font-size:12px; }
+.course-form-row { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:12px; }
+.course-task-list { display:grid; gap:12px; }
+.course-task .section-head { align-items:center; }
+.course-task-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.course-task-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+.course-task-grid>div { background:#f8fafc; border-radius:9px; padding:9px; overflow-wrap:anywhere; }
+.course-task-grid b { color:#007b85; font-size:11px; }
+.course-task-grid p { margin:4px 0 0; font-size:12px; line-height:1.45; white-space:pre-wrap; }
+.course-full { grid-column:1/-1; }
+@media(max-width:1150px) { .course-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:740px) {
+  .login-shell { grid-template-columns:1fr; max-width:510px; gap:24px; }
+  .login-gate { padding:20px 14px; }
+  .login-logo { width:70px; height:70px; }
+  .login-intro h1 { font-size:34px; }
+  .login-intro>p:not(.login-eyebrow), .login-pill { display:none; }
+  .login-card { border-radius:18px; }
+  .course-form-row,.course-task-grid { grid-template-columns:1fr; }
+  .course-full { grid-column:auto; }
+}
+@media(max-width:520px) { .course-grid { grid-template-columns:1fr; } }

@@ -1,8 +1,9 @@
   'use strict';
 
-  const STORAGE_KEY = 'movidasst_contratistas_v1';
+  let STORAGE_KEY = null;
+  let authenticated = false;
   const VIEW_TITLES = {
-    dashboard:'Dashboard', contractors:'Contratistas', contracts:'Contratos', criticality:'Clasificación de criticidad',
+    dashboard:'Dashboard', legal:'Marco legal y corporativo', iperc:'IPERC y permisos por tarea', contractors:'Contratistas', contracts:'Contratos', criticality:'Clasificación de criticidad',
     prequal:'Precalificación y habilitación', prestart:'Preinicio e interfaces', monitoring:'Seguimiento de ejecución',
     performance:'Desempeño y cierre', assurance:'Controles y evidencias', backup:'Respaldo y restauración', references:'Referencias y criterio técnico'
   };
@@ -26,16 +27,18 @@
   ];
 
   const PREQUAL = [
-    {id:'legal',name:'Cumplimiento legal y organización SST',desc:'Estructura, responsabilidades, Servicio SST, participación y evidencias aplicables.',weight:15,critical:true},
-    {id:'experience',name:'Experiencia en trabajos comparables',desc:'Experiencia demostrable en alcances y contextos de riesgo similares.',weight:8,critical:false},
-    {id:'risk',name:'Identificación de peligros y gestión del riesgo',desc:'Métodos, evaluación, controles y revisión ante cambios.',weight:14,critical:true},
+    {id:'legal',name:'Cumplimiento legal y organización SST',desc:'Estructura, responsabilidades, Servicio SST, participación y evidencias aplicables.',weight:14,critical:true},
+    {id:'experience',name:'Experiencia en trabajos comparables',desc:'Experiencia demostrable en alcances y contextos de riesgo similares.',weight:7,critical:false},
+    {id:'risk',name:'Identificación de peligros y gestión del riesgo',desc:'Métodos, evaluación, controles y revisión ante cambios.',weight:13,critical:true},
     {id:'competence',name:'Competencia del personal',desc:'Formación, experiencia, certificaciones y supervisión según el alcance.',weight:12,critical:true},
-    {id:'equipment',name:'Equipos, herramientas y mantenimiento',desc:'Aptitud, certificación, inspección y mantenimiento de equipos.',weight:10,critical:true},
-    {id:'procedures',name:'Procedimientos y controles operacionales',desc:'Procedimientos aplicables, permisos y prácticas de trabajo seguras.',weight:12,critical:true},
-    {id:'emergency',name:'Emergencias y continuidad',desc:'Plan, recursos, coordinación y respuesta compatible con la instalación.',weight:8,critical:false},
-    {id:'incidents',name:'Incidentes, aprendizaje y acciones',desc:'Investigación, seguimiento, lecciones aprendidas y control de reincidencia.',weight:8,critical:false},
-    {id:'assurance',name:'Inspección, auditoría y aseguramiento',desc:'Verificación de implementación, seguimiento y mejora.',weight:8,critical:false},
-    {id:'subcontractors',name:'Gestión de subcontratistas',desc:'Selección, requisitos, interfaces y control de empresas subcontratadas.',weight:5,critical:false}
+    {id:'equipment',name:'Equipos, herramientas y mantenimiento',desc:'Aptitud, certificación, inspección y mantenimiento de equipos.',weight:9,critical:true},
+    {id:'procedures',name:'Procedimientos y controles operacionales',desc:'Procedimientos aplicables, permisos y prácticas de trabajo seguras.',weight:10,critical:true},
+    {id:'emergency',name:'Emergencias y continuidad',desc:'Plan, recursos, coordinación y respuesta compatible con la instalación.',weight:7,critical:false},
+    {id:'incidents',name:'Incidentes, aprendizaje y acciones',desc:'Investigación, seguimiento, lecciones aprendidas y control de reincidencia.',weight:7,critical:false},
+    {id:'assurance',name:'Inspección, auditoría y aseguramiento',desc:'Verificación de implementación, seguimiento y mejora.',weight:6,critical:false},
+    {id:'subcontractors',name:'Gestión de subcontratistas',desc:'Selección, requisitos, interfaces y control de empresas subcontratadas.',weight:5,critical:false},
+    {id:'technical',name:'Capacidad técnica y recursos',desc:'Solvencia operativa, equipos, cronograma y recursos para el alcance contratado.',weight:5,critical:false},
+    {id:'financial',name:'Capacidad financiera para sostener el contrato',desc:'Referencia comercial complementaria; no compensa brechas críticas de SST.',weight:5,critical:false}
   ];
 
   const PRESTART = [
@@ -87,7 +90,7 @@
     }
   });
 
-  let state = load();
+  let state = seed();
   let currentView = location.hash.replace('#/','') || 'dashboard';
 
   const $ = s => document.querySelector(s);
@@ -98,10 +101,12 @@
   const alertBox = $('#appAlert');
 
   function load(){
+    if (!authenticated || !STORAGE_KEY) return seed();
     try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : seed(); }
     catch(e){ return seed(); }
   }
   function save(){
+    if (!authenticated || !STORAGE_KEY) return false;
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));return true;}
     catch(e){notify('No fue posible guardar en el navegador. Revisa el espacio disponible y descarga un respaldo.','warn');return false;}
   }
@@ -157,12 +162,15 @@
   }
   function setView(v){ currentView=v; location.hash=`/${v}`; render(); }
   function render(){
+    if (!authenticated) return;
     if(!VIEW_TITLES[currentView]) currentView='dashboard';
     title.textContent=VIEW_TITLES[currentView];
     $$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
     refreshPicker();
-    const fn={dashboard:renderDashboard,contractors:renderContractors,contracts:renderContracts,criticality:renderCriticality,prequal:renderPrequal,prestart:renderPrestart,monitoring:renderMonitoring,assurance:window.renderAssurance,performance:renderPerformance,backup:window.renderBackup,references:renderReferences}[currentView];
+    const fn={dashboard:renderDashboard,legal:window.renderLegal,iperc:window.renderIperc,contractors:renderContractors,contracts:renderContracts,criticality:renderCriticality,prequal:renderPrequal,prestart:renderPrestart,monitoring:renderMonitoring,assurance:window.renderAssurance,performance:renderPerformance,backup:window.renderBackup,references:renderReferences}[currentView];
     view.innerHTML=fn(); bindView();
+    if(currentView==='dashboard' && window.courseOverview) view.insertAdjacentHTML('beforeend', window.courseOverview());
+    window.bindCourseViews?.();
     $('#sidebar').classList.remove('open');
   }
 
@@ -229,3 +237,21 @@
     if(!rows.length) return '<div class="empty"><strong>Sin contratos</strong>Agrega el primer contrato para iniciar.</div>';
     return `<div class="table-wrap"><table class="table"><thead><tr><th>Contrato</th><th>Contratista</th><th>Criticidad</th><th>Estado</th><th>Inicio</th><th></th></tr></thead><tbody>${rows.map(c=>`<tr><td><strong class="text-navy">${esc(c.title)}</strong><div class="small muted">${esc(c.site||'')}</div></td><td>${esc(contractorById(c.contractorId)?.name||'—')}</td><td>${tag(criticalityResult(c).short,criticalityResult(c).short==='N3'?'yellow':'teal')}</td><td>${statusTag(c.status)}</td><td>${fmtDate(c.start)}</td><td class="right"><button class="btn btn-ghost btn-sm" data-open-contract="${c.id}">Abrir</button></td></tr>`).join('')}</tbody></table></div>`;
   }
+
+  window.addEventListener('movida:integrante-autenticado', event => {
+    const key = event.detail?.storageKey;
+    if (!/^movidasst_contratistas_v2_[0-9a-f]{64}$/.test(key || '')) return;
+    authenticated = true;
+    STORAGE_KEY = key;
+    state = load();
+    currentView = location.hash.replace('#/','') || 'dashboard';
+    render();
+  });
+  window.addEventListener('movida:integrante-salio', () => {
+    authenticated = false;
+    STORAGE_KEY = null;
+    state = seed();
+    view.replaceChildren();
+    $('#modalBackdrop').hidden = true;
+    $('#sidebar').classList.remove('open');
+  });

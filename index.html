@@ -9,8 +9,34 @@
   <meta name="description" content="Aplicación para gestionar contratistas en SST: criticidad, precalificación, habilitación, preinicio, seguimiento, desempeño y cierre." />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <div id="app" class="app-shell">
+<body class="auth-locked">
+  <section id="loginGate" class="login-gate" aria-labelledby="loginTitle">
+    <div class="login-shell">
+      <div class="login-intro">
+        <img class="login-logo" src="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10" alt="La Movida de SST+" />
+        <p class="login-eyebrow">ACADEMIA · LA MOVIDA DE SST+</p>
+        <h1 id="loginTitle">Gestión SST de <em>Contratistas</em> en Venezuela</h1>
+        <p>Aplica los cuatro módulos del curso en un expediente guiado, desde el marco legal y la selección hasta la ejecución y el cierre.</p>
+        <div class="login-pill">De la Reacción a la Prevención</div>
+      </div>
+      <div class="login-card">
+        <div class="login-label">ACCESO EXCLUSIVO A INTEGRANTES</div>
+        <h2>Ingresa con tus datos de La Movida</h2>
+        <p>Utiliza la misma cédula y clave de integrante que en los simuladores del Laboratorio.</p>
+        <form id="memberLogin" novalidate>
+          <label for="memberId">Cédula de identidad</label>
+          <input id="memberId" name="cedula" inputmode="numeric" autocomplete="username" placeholder="Solo números" required />
+          <label for="memberPassword">Clave de integrante</label>
+          <div class="password-row"><input id="memberPassword" name="codigo" type="password" autocomplete="current-password" placeholder="Tu clave" required /><button type="button" id="togglePassword" aria-pressed="false">Mostrar</button></div>
+          <button class="login-submit" type="submit" id="loginSubmit"><span>Ingresar a la aplicación</span> <span aria-hidden="true">→</span></button>
+          <p id="loginMessage" class="login-message" role="status" aria-live="polite"></p>
+        </form>
+        <p class="login-register">¿Aún no eres integrante? <a href="https://registro.movidasst.com" target="_blank" rel="noopener noreferrer">Regístrate aquí</a></p>
+        <small>Sesión de 20 minutos. Los expedientes se guardan por integrante únicamente en este navegador; no hay sincronización entre dispositivos.</small>
+      </div>
+    </div>
+  </section>
+  <div id="app" class="app-shell" hidden aria-hidden="true">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <img class="brand-logo" src="https://emergencias.movidasst.com/assets/sello-movida-r10.png?v=20260919-r10" alt="La Movida de SST" />
@@ -22,13 +48,16 @@
 
       <nav class="nav" aria-label="Navegación principal">
         <button class="nav-item active" data-view="dashboard"><span class="nav-icon">⌂</span><span>Inicio y ruta guiada</span></button>
-        <div class="nav-label">Paso a paso</div>
+        <div class="nav-label">Módulo 1 · Marco normativo</div>
+        <button class="nav-item" data-view="legal"><span class="nav-icon">L</span><span>Lista legal y corporativa</span></button>
+        <div class="nav-label">Módulos 2–4 · Proceso aplicado</div>
         <button class="nav-item" data-view="contractors"><span class="nav-icon">1</span><span>Contratista</span></button>
         <button class="nav-item" data-view="contracts"><span class="nav-icon">2</span><span>Contrato y alcance</span></button>
         <button class="nav-item" data-view="criticality"><span class="nav-icon">3</span><span>Criticidad</span></button>
         <button class="nav-item" data-view="prequal"><span class="nav-icon">4</span><span>Precalificación</span></button>
         <button class="nav-item" data-view="prestart"><span class="nav-icon">5</span><span>Preinicio e interfaces</span></button>
         <button class="nav-item" data-view="monitoring"><span class="nav-icon">6</span><span>Seguimiento</span></button>
+        <button class="nav-item" data-view="iperc"><span class="nav-icon">3</span><span>IPERC y permisos por tarea</span></button>
         <button class="nav-item" data-view="assurance"><span class="nav-icon">✓</span><span>Controles y evidencias</span></button>
         <button class="nav-item" data-view="performance"><span class="nav-icon">7</span><span>Desempeño y cierre</span></button>
         <div class="nav-label">Soporte</div>
@@ -39,6 +68,7 @@
       <div class="sidebar-footer">
         <div class="storage-badge"><span class="dot"></span> Guardado automático</div>
         <small>Academia Movida SST<br>De la Reacción a la Prevención</small>
+        <button id="logoutSidebar" class="logout-sidebar" type="button">Cerrar sesión</button>
       </div>
     </aside>
 
@@ -52,6 +82,8 @@
           </div>
         </div>
         <div class="topbar-actions">
+          <span class="member-chip" id="memberName">Integrante</span>
+          <button class="btn btn-ghost" id="logoutBtn" type="button">Salir</button>
           <label class="contract-picker">
             <span>Contrato activo</span>
             <select id="activeContractSelect"></select>
@@ -81,6 +113,8 @@
   <script src="app-core.js"></script>
   <script src="app-views.js"></script>
   <script src="app-assurance.js"></script>
+  <script src="course-instruments.js"></script>
   <script src="app-actions.js"></script>
+  <script src="auth.js"></script>
 </body>
 </html>

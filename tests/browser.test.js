@@ -23,7 +23,15 @@ async function run(){
  const failures=[];
  page.on('pageerror',e=>failures.push(e.message));
  try{
+  await page.route('**/rest/v1/rpc/acceso_integrante',route=>route.fulfill({status:200,
+    headers:{'access-control-allow-origin':'*','access-control-allow-headers':'apikey, authorization, content-type','access-control-allow-methods':'POST, OPTIONS','content-type':'application/json'},
+    body:JSON.stringify({nombres:'Integrante',apellidos:'Prueba'})}));
   await page.goto(url,{waitUntil:'domcontentloaded'});
+  assert(await page.locator('#app').isHidden(),'El expediente no puede estar visible antes del acceso');
+  await page.locator('#memberId').fill('12345678');
+  await page.locator('#memberPassword').fill('clave-prueba');
+  await page.locator('#memberLogin').evaluate(form=>form.requestSubmit());
+  await page.locator('#app').waitFor({state:'visible'});
   await page.locator('[data-view="contractors"]').click();
   await page.locator('[data-action="new-contractor"]').click();
   await page.locator('#modalBody [name="name"]').fill('Contratista de prueba, C.A.');
@@ -36,26 +44,42 @@ async function run(){
   await page.locator('#modalBody [name="scope"]').fill('Ingreso a tanque, izamiento y soldadura');
   await page.locator('#modalBody [name="tasks"]').fill('Espacios confinados, Trabajo en caliente, Izamiento de cargas');
   await page.locator('#modalBody button[type="submit"]').click();
-  const first=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  const first=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(first.contracts.length,1);
   const realContractId=first.contracts[0].id;
 
   await page.locator('[data-view="contracts"]').click();
   await page.locator('#contractStatus').selectOption('Habilitado');
   await page.locator('[data-action="save-contract-meta"]').click();
-  const status=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')).contracts[0].status);
+  const status=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))).contracts[0].status);
   assert.equal(status,'Borrador','La aplicación no debe habilitar un contrato sin condiciones previas');
 
+  await page.locator('[data-view="legal"]').click();
+  assert((await page.locator('[data-legal]').count())>=10,'El módulo 1 debe presentar lista legal y corporativa');
+  await page.locator('[data-legal="lopcymat"] .legal-status').selectOption('yes');
+  await page.locator('[data-action="save-legal"]').click();
+  assert((await page.locator('#appAlert').innerText()).includes('evidencia'),'Cumplimiento sin evidencia no puede aceptarse');
+  await page.locator('[data-legal="lopcymat"] .legal-evidence').fill('Lista de verificación firmada');
+  await page.locator('[data-action="save-legal"]').click();
+  await page.locator('[data-view="iperc"]').click();
+  await page.locator('[data-action="new-iperc"]').click();
+  await page.locator('#modalBody [name="task"]').fill('Ingreso a espacio confinado');
+  await page.locator('#modalBody [name="hazard"]').fill('Atmósfera deficiente en oxígeno');
+  await page.locator('#modalBody [name="event"]').fill('Ingreso sin atmósfera segura');
+  await page.locator('#modalBody [name="controls"]').fill('Permiso, medición, vigía y rescate');
+  await page.locator('#modalBody [name="permitType"]').fill('Permiso de entrada');
+  await page.locator('#modalBody button[type="submit"]').click();
+  assert.equal(await page.locator('[data-edit-iperc]').count(),1,'Debe registrarse IPERC');
   await page.locator('[data-view="assurance"]').click();
   assert((await page.locator('[data-assurance]').count())>=7,'Deben proponerse los controles aplicables');
   await page.locator('[data-assurance="ast"] .ass-status').selectOption('yes');
   await page.locator('[data-action="save-assurance"]').click();
-  let state=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  let state=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(state.contracts[0].assurance,undefined,'Conforme sin evidencia no debe guardarse');
   await page.locator('[data-assurance="ast"] .ass-evidence').fill('Acta de AST firmada por supervisor');
   await page.locator('[data-assurance="ast"] .ass-owner').fill('Supervisor SST');
   await page.locator('[data-action="save-assurance"]').click();
-  state=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  state=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(state.contracts[0].assurance.items.ast.status,'yes');
 
   await page.locator('[data-view="backup"]').click();
@@ -68,10 +92,10 @@ async function run(){
 
   await page.locator('[data-view="dashboard"]').click();
   await page.locator('[data-action="load-example"]').click();
-  state=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  state=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(state.contracts.length,2,'Caso de prueba y real deben coexistir');
   await page.locator('[data-action="delete-example"]').click();
-  state=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  state=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(state.contracts.length,1);
   assert.equal(state.contracts[0].id,realContractId,'Eliminar ejemplo no debe borrar contrato real');
 
@@ -79,14 +103,14 @@ async function run(){
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('#backupInput').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
   await page.waitForTimeout(300);
-  state=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  state=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(state.contracts.length,1);
   assert.equal(state.contracts[0].assurance.items.ast.evidence,'Acta de AST firmada por supervisor');
 
   await page.locator('[data-view="backup"]').click();
   await page.locator('#backupInput').setInputFiles({name:'corrupt.json',mimeType:'application/json',buffer:Buffer.from('{"invalid":true}')});
   await page.waitForTimeout(150);
-  state=await page.evaluate(()=>JSON.parse(localStorage.getItem('movidasst_contratistas_v1')));
+  state=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('movidasst_contratistas_v2_')))));
   assert.equal(state.contracts.length,1,'Respaldo inválido no puede borrar datos');
 
   // La biblioteca Excel depende de la CDN; un problema de red debe producir aviso, no pérdida de datos.
@@ -104,11 +128,28 @@ async function run(){
 
   const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   const mobilePage=await mobile.newPage();
+  await mobilePage.route('**/rest/v1/rpc/acceso_integrante',route=>route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'apikey, authorization, content-type','access-control-allow-methods':'POST, OPTIONS','content-type':'application/json'},body:JSON.stringify({nombres:'Usuario',apellidos:'Móvil'})}));
   await mobilePage.goto(url,{waitUntil:'domcontentloaded'});
+  await mobilePage.locator('#memberId').fill('87654321');
+  await mobilePage.locator('#memberPassword').fill('clave-prueba');
+  await mobilePage.locator('#memberLogin').evaluate(form=>form.requestSubmit());
+  await mobilePage.locator('#app').waitFor({state:'visible'});
   await mobilePage.locator('#menuToggle').click();
   await mobilePage.locator('[data-view="backup"]').click();
   assert((await mobilePage.locator('#view').innerText()).includes('Respaldo y restauración'));
+  await mobilePage.locator('#menuToggle').click();
+  await mobilePage.locator('#logoutSidebar').click();
+  assert(await mobilePage.locator('#loginGate').isVisible(),'Cerrar sesión debe bloquear la aplicación en móvil');
   await mobile.close();
+  await page.locator('#logoutBtn').click();
+  assert(await page.locator('#app').isHidden(),'El cierre de sesión bloquea el expediente');
+  await page.locator('#memberId').fill('99999999');
+  await page.locator('#memberPassword').fill('otra-clave');
+  await page.locator('#memberLogin').evaluate(form=>form.requestSubmit());
+  await page.locator('#app').waitFor({state:'visible'});
+  await page.locator('[data-view="dashboard"]').click();
+  // La vista, no el orden de las claves locales, es la fuente de verdad para el aislamiento.
+  assert((await page.locator('#view').innerText()).includes('Comenzar') || (await page.locator('#view').innerText()).includes('Empieza'),'Otro integrante debe comenzar sin los datos del primero');
   assert.deepEqual(failures,[],'No debe haber errores de JavaScript en la página');
   console.log('PRUEBA E2E OK: alta, bloqueos, controles, respaldos, ejemplo, PDF y móvil');
  } finally{await browser.close();server.close()}

@@ -40,7 +40,8 @@ c.assurance={items};if(save()){notify('Controles y evidencias guardados.','succe
 function backupView(){
 return `<div class="hero-panel"><div class="kicker">Gestión segura de expedientes</div><h2>Respaldo y restauración</h2><p>En esta versión, los datos se guardan únicamente en este navegador. No existe sincronización automática con otros equipos ni respaldo en servidor.</p></div>
 <div class="section grid grid-2"><div class="panel"><h3 class="panel-title">Descargar un respaldo</h3><p>Exporta contratistas, contratos, controles y resultados en un archivo JSON.</p><div class="callout warn">El archivo puede contener datos personales y empresariales. Guárdalo de forma privada.</div><div class="actions"><button class="btn btn-primary" data-action="download-backup">Descargar respaldo JSON</button></div></div><div class="panel"><h3 class="panel-title">Restaurar expediente</h3><p>Selecciona un respaldo exportado por esta aplicación. Se validará y solicitará confirmación antes de sustituir los datos actuales.</p><input class="input" type="file" id="backupInput" accept=".json,application/json"><div class="callout warn mt-12">Descarga primero un respaldo actualizado de tus datos. La restauración reemplazará el almacenamiento de este navegador.</div></div></div>
-<div class="section panel"><h3 class="panel-title">Estado del navegador</h3><p><strong>${state.contractors.length}</strong> contratistas · <strong>${state.contracts.length}</strong> contratos. No ingreses contraseñas, registros médicos ni otra información sensible en esta versión local sin autenticación.</p></div>`;
+<div class="section panel"><h3 class="panel-title">Estado del navegador</h3><p><strong>${state.contractors.length}</strong> contratistas · <strong>${state.contracts.length}</strong> contratos. El ingreso valida integrantes, pero la información sigue almacenada localmente y sin cifrado. No ingreses contraseñas, datos médicos ni información confidencial.</p></div>
+${localStorage.getItem('movidasst_contratistas_v1') ? '<div class="section panel"><h3 class="panel-title">Datos de la versión anterior</h3><p>Se detectó un expediente guardado antes de habilitar el acceso. Si te pertenece, puedes migrarlo a tu espacio de integrante. Esta acción requiere confirmación y no sustituye tus datos actuales.</p><div class="actions"><button class="btn btn-ghost" data-action="migrate-legacy">Migrar datos locales anteriores</button></div></div>' : ''}`;
 }
 function backup(){
 const output={format:'movidasst-contratistas-backup',schema:1,createdAt:new Date().toISOString(),data:JSON.parse(JSON.stringify(state))};
@@ -59,5 +60,16 @@ if(!confirm(`Se sustituirán ${state.contracts.length} contrato(s) actuales por 
 const previous=state;state=d;if(!save()){state=previous;return;}
 currentView='dashboard';location.hash='/dashboard';render();notify('Respaldo restaurado correctamente.','success');
 }
+function migrateLegacy(){
+  if(state.contracts.length || state.contractors.length){notify('Tu espacio de integrante ya contiene registros: descarga respaldos antes de cualquier migración.','warn');return;}
+  let older;try{older=JSON.parse(localStorage.getItem('movidasst_contratistas_v1')||'null');}catch(_){older=null;}
+  if(older?.version!==1 || !Array.isArray(older?.contracts) || !Array.isArray(older?.contractors) || older.contracts.length>3000 || older.contractors.length>3000){notify('No hay datos antiguos compatibles.','warn');return;}
+  if(!confirm('Confirma que estos datos anteriores son tuyos. Se asignarán a tu sesión de integrante y se retirarán del almacenamiento antiguo. ¿Continuar?'))return;
+  const previous=state;state=older;
+  if(!save()){state=previous;return;}
+  localStorage.removeItem('movidasst_contratistas_v1');
+  render();notify('Expediente anterior migrado a tu espacio. Descarga un respaldo seguro.','success');
+}
+window.migrateLegacy=migrateLegacy;
 window.renderAssurance=viewAssurance;window.saveAssurance=saveAssurance;window.assuranceStats=stats;window.renderBackup=backupView;window.downloadBackup=backup;window.restoreBackupFile=restore;
 })();

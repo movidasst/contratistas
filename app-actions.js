@@ -1,7 +1,7 @@
   function bindView(){
     $$('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
     $$('[data-open-contract]').forEach(b=>b.onclick=()=>{state.activeContractId=b.dataset.openContract;save();setView('contracts')});
-    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='load-example')b.onclick=loadExampleCase; if(a==='delete-example')b.onclick=deleteExampleCase; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='save-assurance')b.onclick=window.saveAssurance; if(a==='download-backup')b.onclick=window.downloadBackup; if(a==='import')b.onclick=()=>setView('backup'); if(a==='apply-close-status')b.onclick=applyCloseStatus; });
+    $$('[data-action]').forEach(b=>{ const a=b.dataset.action; if(a==='new-contract')b.onclick=()=>openContractModal(); if(a==='new-contractor')b.onclick=()=>openContractorModal(); if(a==='excel-report')b.onclick=exportExcelReport; if(a==='pdf-report')b.onclick=generatePdfReport; if(a==='load-example')b.onclick=loadExampleCase; if(a==='delete-example')b.onclick=deleteExampleCase; if(a==='save-contract-meta')b.onclick=saveContractMeta; if(a==='edit-tasks')b.onclick=editTasks; if(a==='save-pq-notes')b.onclick=savePqNotes; if(a==='add-interface')b.onclick=addInterface; if(a==='save-interfaces')b.onclick=saveInterfaces; if(a==='apply-prestart-status')b.onclick=applyPrestartStatus; if(a==='new-monitoring')b.onclick=()=>openMonitoringModal(); if(a==='save-performance-notes')b.onclick=savePerformanceNotes; if(a==='save-assurance')b.onclick=window.saveAssurance; if(a==='download-backup')b.onclick=window.downloadBackup; if(a==='import')b.onclick=()=>setView('backup'); if(a==='migrate-legacy')b.onclick=window.migrateLegacy; if(a==='apply-close-status')b.onclick=applyCloseStatus; });
     $$('[data-edit-contractor]').forEach(b=>b.onclick=()=>openContractorModal(b.dataset.editContractor));
     $$('[data-edit-monitoring]').forEach(b=>b.onclick=()=>openMonitoringModal(b.dataset.editMonitoring));
     $$('.crit-range').forEach(el=>el.oninput=()=>{const c=activeContract();c.criticality=c.criticality||{};c.criticality[el.dataset.key]=Number(el.value);$('#crit-'+el.dataset.key).textContent=el.value;save();const r=criticalityResult(c);$('#critTotal').textContent=`${r.total}/25`;$('#critProgress').style.width=`${r.total/25*100}%`;});
@@ -130,6 +130,15 @@
       ['Control','Fuente','Estado','Responsable','Fecha','Evidencia'],
       ...window.assuranceStats(c).rows.map(i=>{const x=c.assurance?.items?.[i.id]||{};return [i.name,i.ref,({yes:'Conforme',no:'No conforme',pending:'Pendiente',na:'No aplica'})[x.status]||'Pendiente',x.owner||'',x.date||'',x.evidence||''];})
     ]);
+    add('Lista legal y corporativa',[
+      ['Requisito','Referencia','Estado','Responsable','Evidencia / brecha / justificación'],
+      ...window.courseLegalChecks.map(i=>{const x=c.legalChecklist?.items?.[i.id]||{};return [i.label,i.ref,({yes:'Cumple',no:'No cumple',na:'No aplica',pending:'Por verificar'})[x.status]||'Por verificar',x.owner||'',x.evidence||''];})
+    ]);
+    add('IPERC y permisos',[
+      ['Tarea crítica','Actividad','Peligro','Exposición','Evento','Consecuencia','Método/valoración','Controles','Permiso o ATS','Estado documental','Responsable','Fecha','Evidencia'],
+      ...(c.iperc||[]).map(x=>[x.task||'',x.activity||'',x.hazard||'',x.exposure||'',x.event||'',x.consequence||'',x.risk||'',x.controls||'',x.permitType||'',x.permitStatus||'',x.owner||'',x.date||'',x.evidence||''])
+    ]);
+
     add('Desempeño',[
       ['Dimensión','Peso %','Resultado %'],
       ...PERFORMANCE_DIMS.map(([k,n,w])=>[n,w,Number(c.performance?.[k])||0]),
@@ -248,6 +257,7 @@
       <div class="note"><b>Aplicabilidad:</b> referencias sectoriales de API RP 1646:2025, seleccionadas de acuerdo con las tareas declaradas. No sustituyen obligaciones venezolanas ni autorización de trabajos.</div>
       <div class="checks">${assuranceCards||'<div class="note">No se identificaron controles aplicables.</div>'}</div>
     </div>${footer(4)}</section>
+    ${window.renderCoursePdf ? window.renderCoursePdf(c, header, footer) : ""}
     <script>window.onload=()=>setTimeout(()=>window.print(),450)<\/script></body></html>`;
     const w=window.open('','_blank'); if(!w){notify('El navegador bloqueó la ventana del informe. Habilita ventanas emergentes e intenta nuevamente.','warn');return;} w.document.open();w.document.write(html);w.document.close();
   }
