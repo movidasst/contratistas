@@ -146,6 +146,7 @@ async function run(){
   await page.locator('#memberPassword').fill('otra-clave');
   await page.locator('#memberLogin').evaluate(form=>form.requestSubmit());
   await page.locator('#app').waitFor({state:'visible'});
+  await page.locator('[data-view="dashboard"]').click();
   // La vista, no el orden de las claves locales, es la fuente de verdad para el aislamiento.
   assert((await page.locator('#view').innerText()).includes('Comenzar') || (await page.locator('#view').innerText()).includes('Empieza'),'Otro integrante debe comenzar sin los datos del primero');
   assert.deepEqual(failures,[],'No debe haber errores de JavaScript en la página');
