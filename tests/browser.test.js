@@ -137,6 +137,7 @@ async function run(){
   await mobilePage.locator('#menuToggle').click();
   await mobilePage.locator('[data-view="backup"]').click();
   assert((await mobilePage.locator('#view').innerText()).includes('Respaldo y restauración'));
+  await mobilePage.locator('#menuToggle').click();
   await mobilePage.locator('#logoutSidebar').click();
   assert(await mobilePage.locator('#loginGate').isVisible(),'Cerrar sesión debe bloquear la aplicación en móvil');
   await mobile.close();
